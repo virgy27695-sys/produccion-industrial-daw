@@ -9,23 +9,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once __DIR__ . '/../controllers/PiezaController.php';
+require_once __DIR__ . '/../controllers/ClienteController.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
 
 switch ($method) {
     case 'GET':
-        $id ? PiezaController::show($id) : PiezaController::index();
+        $id ? ClienteController::show($id) : ClienteController::index();
         break;
     case 'POST':
-        PiezaController::store();
+        ClienteController::store();
         break;
     case 'PUT':
-        PiezaController::update($id);
+        ClienteController::update($id);
         break;
     case 'DELETE':
-        PiezaController::destroy($id);
+        ClienteController::destroy($id);
         break;
     default:
         http_response_code(405);

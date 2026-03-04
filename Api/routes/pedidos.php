@@ -9,24 +9,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once __DIR__ . '/../controllers/PiezaController.php';
+require_once __DIR__ . '/../controllers/PedidoController.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
 
 switch ($method) {
     case 'GET':
-        $id ? PiezaController::show($id) : PiezaController::index();
+        $id ? PedidoController::show($id) : PedidoController::index();
         break;
+
     case 'POST':
-        PiezaController::store();
+        PedidoController::store(); // crea pedido + detalles
         break;
-    case 'PUT':
-        PiezaController::update($id);
-        break;
-    case 'DELETE':
-        PiezaController::destroy($id);
-        break;
+
     default:
         http_response_code(405);
         echo json_encode(["error" => "Método no permitido"]);
