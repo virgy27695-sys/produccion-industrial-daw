@@ -49,6 +49,22 @@ La aplicación estará disponible en:
 
 http://localhost:5173
 
+### La API REST está disponible en:
+
+http://localhost:8080/api
+
+## Endpoints principales:
+
+/api/clientes
+
+/api/modelos
+
+/api/piezas
+
+/api/programas
+
+/api/pedidos
+
 ### Backend
 
 ```bash
