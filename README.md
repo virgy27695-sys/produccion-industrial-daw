@@ -34,6 +34,21 @@ Proyecto DAW desarrollado con arquitectura cliente-servidor para la gestión de 
 
 ## Instalación y ejecución
 
+### Frontend
+
+Instalar dependencias:
+
+cd frontend
+npm install
+
+Arrancar servidor de desarrollo:
+
+npm run dev
+
+La aplicación estará disponible en:
+
+http://localhost:5173
+
 ### Backend
 
 ```bash
@@ -42,22 +57,6 @@ cp .env.example .env
 composer install
 php artisan key:generate
 ./vendor/bin/sail up -d
-./vendor/bin/sail artisan migrate:fresh --seed **
+./vendor/bin/sail artisan migrate:fresh --seed 
 
-## Frontend
 
-Instalar dependencias:
-
-```bash
-cd frontend
-npm install
-
-Arrancar servidor de desarrollo:
-
-```bash
-npm run dev
-
-La aplicación estará disponible en:
-
-```bash
-http://localhost:5173
