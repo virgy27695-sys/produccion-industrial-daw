@@ -43,3 +43,9 @@ composer install
 php artisan key:generate
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan migrate:fresh --seed
+
+### Frontend
+
+```cd frontend
+npm install
+npm run dev
