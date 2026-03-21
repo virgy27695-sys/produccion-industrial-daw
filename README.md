@@ -73,6 +73,9 @@ cp .env.example .env
 composer install
 php artisan key:generate
 ./vendor/bin/sail up -d
-./vendor/bin/sail artisan migrate:fresh --seed 
+./vendor/bin/sail artisan migrate:fresh --seed
+
+```markdown
+Este comando crea la base de datos del proyecto y carga automáticamente los datos iniciales mediante seeders.
 
 
