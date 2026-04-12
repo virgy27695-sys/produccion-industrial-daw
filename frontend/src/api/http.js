@@ -5,14 +5,20 @@ async function request(endpoint, options = {}) {
     const response = await fetch(`${API_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...(options.headers || {}),
       },
       ...options,
     })
 
-    const data = await response.json()
+    const contentType = response.headers.get('content-type') || ''
+    const isJson = contentType.includes('application/json')
+
+    const data = isJson ? await response.json() : await response.text()
 
     if (!response.ok) {
-      throw new Error(data.message || 'Error en la petición')
+      const message = isJson && data?.message ? data.message : 'Error en la petición'
+
+      throw new Error(message)
     }
 
     return data
