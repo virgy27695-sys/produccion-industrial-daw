@@ -14,6 +14,7 @@ const router = createRouter({
     {
       path: '/login',
       component: LoginView,
+      meta: { hideLayout: true },
     },
     {
       path: '/',
