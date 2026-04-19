@@ -1,11 +1,15 @@
-import { apiGet, apiPost, apiPut, apiDelete } from './http'
+import { apiGet, apiPost, apiPut, apiDelete } from "./http"
 
 export function getPiezas() {
-  return apiGet('/piezas')
+  return apiGet("/piezas")
+}
+
+export function getPieza(id) {
+  return apiGet(`/piezas/${id}`)
 }
 
 export function createPieza(data) {
-  return apiPost('/piezas', data)
+  return apiPost("/piezas", data)
 }
 
 export function updatePieza(id, data) {

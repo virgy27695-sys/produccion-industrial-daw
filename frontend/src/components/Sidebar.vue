@@ -11,14 +11,20 @@ import {
   Menu,
   X,
 } from "lucide-vue-next"
+import { getCurrentUser } from "../utils/auth"
 
 const route = useRoute()
 const open = ref(false)
+const user = getCurrentUser()
 
 const links = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Clientes", path: "/clientes", icon: Users },
-  { name: "Modelos", path: "/modelos", icon: Boxes },
+  ...(user?.role === "admin"
+    ? [
+        { name: "Clientes", path: "/clientes", icon: Users },
+        { name: "Modelos", path: "/modelos", icon: Boxes },
+      ]
+    : []),
   { name: "Piezas", path: "/piezas", icon: Package },
   { name: "Programas", path: "/programas", icon: ClipboardList },
   { name: "Pedidos", path: "/pedidos", icon: ShoppingCart },
@@ -34,7 +40,6 @@ function closeMenu() {
 </script>
 
 <template>
-    <!-- Botón móvil -->
     <button
       @click="open = true"
       class="fixed left-4 top-4 z-50 rounded-xl bg-white p-2 text-slate-700 shadow-md ring-1 ring-slate-200 md:hidden"
@@ -43,14 +48,12 @@ function closeMenu() {
       <Menu class="h-5 w-5" />
     </button>
 
-    <!-- Overlay móvil -->
     <div
       v-if="open"
       class="fixed inset-0 z-40 bg-black/40 md:hidden"
       @click="closeMenu"
     ></div>
 
-    <!-- Sidebar -->
     <aside
       class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white p-4 transition-transform duration-300 md:static md:translate-x-0"
       :class="open ? 'translate-x-0' : '-translate-x-full'"

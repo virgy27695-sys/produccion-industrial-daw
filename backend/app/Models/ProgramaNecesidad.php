@@ -13,7 +13,7 @@ class ProgramaNecesidad extends Model
         'fecha_solicitud',
         'fecha_entrega',
         'estado',
-        'observaciones'
+        'observaciones',
     ];
 
     public function cliente()
@@ -23,6 +23,11 @@ class ProgramaNecesidad extends Model
 
     public function pedidos()
     {
-        return $this->hasMany(Pedido::class,'programa_id');
+        return $this->hasMany(Pedido::class, 'programa_id');
+    }
+
+    public function detalles()
+    {
+        return $this->hasMany(ProgramaDetalle::class, 'programa_id');
     }
 }

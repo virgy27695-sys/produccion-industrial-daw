@@ -8,6 +8,8 @@ use App\Http\Controllers\PiezaController;
 use App\Http\Controllers\ProgramaNecesidadController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\DetallePedidoController;
+use App\Http\Controllers\MoldeController;
+use App\Http\Controllers\ProgramaDetalleController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout']);
@@ -18,3 +20,5 @@ Route::apiResource('piezas', PiezaController::class);
 Route::apiResource('programas', ProgramaNecesidadController::class);
 Route::apiResource('pedidos', PedidoController::class);
 Route::apiResource('detalle-pedidos', DetallePedidoController::class);
+Route::apiResource('moldes', MoldeController::class);
+Route::apiResource('programa-detalles', ProgramaDetalleController::class);

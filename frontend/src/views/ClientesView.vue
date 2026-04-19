@@ -7,8 +7,10 @@ import {
     deleteCliente,
 } from "../api/clientes"
 import { useToastStore } from "../stores/toast"
+import { isAdmin } from "../utils/auth"
 
 const toast = useToastStore()
+const admin = isAdmin()
 
 const clientes = ref([])
 const loading = ref(false)
@@ -117,8 +119,8 @@ onMounted(loadClientes)
             </p>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-1">
+        <div class="grid grid-cols-1 gap-6" :class="admin ? 'xl:grid-cols-3' : 'xl:grid-cols-1'">
+            <div v-if="admin" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-1">
                 <h3 class="mb-4 text-lg font-semibold text-slate-800">
                     {{ isEditing ? "Editar cliente" : "Nuevo cliente" }}
                 </h3>
@@ -151,7 +153,8 @@ onMounted(loadClientes)
                 </form>
             </div>
 
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-2">
+            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+                :class="admin ? 'xl:col-span-2' : 'xl:col-span-1'">
                 <div class="mb-4 flex items-center justify-between gap-3">
                     <h3 class="text-lg font-semibold text-slate-800">
                         Listado de clientes
@@ -175,15 +178,19 @@ onMounted(loadClientes)
                             <tr class="text-left text-sm text-slate-500">
                                 <th class="px-4 py-2">ID</th>
                                 <th class="px-4 py-2">Nombre</th>
-                                <th class="px-4 py-2 text-right">Acciones</th>
+                                <th v-if="admin" class="px-4 py-2 text-right">Acciones</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             <tr v-for="cliente in clientes" :key="cliente.id" class="bg-slate-50 text-slate-800">
-                                <td class="rounded-l-xl px-4 py-3">{{ cliente.id }}</td>
-                                <td class="px-4 py-3 font-medium">{{ cliente.nombre }}</td>
-                                <td class="rounded-r-xl px-4 py-3">
+                                <td class="px-4 py-3" :class="admin ? 'rounded-l-xl' : 'rounded-l-xl'">
+                                    {{ cliente.id }}
+                                </td>
+                                <td class="px-4 py-3 font-medium" :class="!admin ? 'rounded-r-xl' : ''">
+                                    {{ cliente.nombre }}
+                                </td>
+                                <td v-if="admin" class="rounded-r-xl px-4 py-3">
                                     <div class="flex justify-end gap-2">
                                         <button @click="editCliente(cliente)"
                                             class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-white">
@@ -199,7 +206,7 @@ onMounted(loadClientes)
                             </tr>
 
                             <tr v-if="clientes.length === 0">
-                                <td colspan="3" class="px-4 py-6 text-center text-sm text-slate-500">
+                                <td :colspan="admin ? 3 : 2" class="px-4 py-6 text-center text-sm text-slate-500">
                                     No hay clientes registrados.
                                 </td>
                             </tr>

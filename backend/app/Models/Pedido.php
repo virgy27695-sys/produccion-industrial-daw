@@ -9,12 +9,12 @@ class Pedido extends Model
     protected $fillable = [
         'programa_id',
         'fecha_pedido',
-        'estado'
+        'estado',
     ];
 
     public function programa()
     {
-        return $this->belongsTo(ProgramaNecesidad::class,'programa_id');
+        return $this->belongsTo(ProgramaNecesidad::class, 'programa_id');
     }
 
     public function detalles()

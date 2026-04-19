@@ -9,7 +9,9 @@ class PiezaController extends Controller
 {
     public function index()
     {
-        return Pieza::with('modelo.cliente')->orderBy('codigo')->get();
+        return Pieza::with(['modelo.cliente', 'molde'])
+            ->orderBy('codigo')
+            ->get();
     }
 
     public function store(Request $request)
@@ -18,6 +20,10 @@ class PiezaController extends Controller
             'codigo' => ['required', 'string', 'max:50', 'unique:piezas,codigo'],
             'denominacion' => ['required', 'string', 'max:255'],
             'modelo_id' => ['required', 'exists:modelos,id'],
+            'molde_id' => ['nullable', 'exists:moldes,id'],
+            'lado_pieza' => ['nullable', 'in:izquierda,derecha,neutra'],
+            'mercado' => ['nullable', 'string', 'max:20'],
+            'categoria_funcional' => ['nullable', 'string', 'max:50'],
         ]);
 
         $pieza = Pieza::create($validated);
@@ -27,7 +33,7 @@ class PiezaController extends Controller
 
     public function show(Pieza $pieza)
     {
-        return $pieza->load('modelo.cliente');
+        return $pieza->load(['modelo.cliente', 'molde']);
     }
 
     public function update(Request $request, Pieza $pieza)
@@ -36,6 +42,10 @@ class PiezaController extends Controller
             'codigo' => ['required', 'string', 'max:50', 'unique:piezas,codigo,' . $pieza->id],
             'denominacion' => ['required', 'string', 'max:255'],
             'modelo_id' => ['required', 'exists:modelos,id'],
+            'molde_id' => ['nullable', 'exists:moldes,id'],
+            'lado_pieza' => ['nullable', 'in:izquierda,derecha,neutra'],
+            'mercado' => ['nullable', 'string', 'max:20'],
+            'categoria_funcional' => ['nullable', 'string', 'max:50'],
         ]);
 
         $pieza->update($validated);
@@ -47,6 +57,8 @@ class PiezaController extends Controller
     {
         $pieza->delete();
 
-        return response()->json(['message' => 'Pieza eliminada']);
+        return response()->json([
+            'message' => 'Pieza eliminada'
+        ]);
     }
 }

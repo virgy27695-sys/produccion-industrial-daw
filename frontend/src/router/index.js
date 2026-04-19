@@ -7,6 +7,7 @@ import PiezasView from '../views/PiezasView.vue'
 import ProgramasView from '../views/ProgramasView.vue'
 import PedidosView from '../views/PedidosView.vue'
 import LoginView from '../views/LoginView.vue'
+import MoldesView from '../views/MoldesView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -45,6 +46,11 @@ const router = createRouter({
       path: '/pedidos',
       component: PedidosView,
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/moldes',
+      component: MoldesView,
+      meta: { requiresAuth: true, role: 'admin' },
     },
   ],
 })

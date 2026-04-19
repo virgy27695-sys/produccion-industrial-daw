@@ -11,11 +11,20 @@ class Pieza extends Model
     protected $fillable = [
         'codigo',
         'denominacion',
-        'modelo_id'
+        'modelo_id',
+        'molde_id',
+        'lado_pieza',
+        'mercado',
+        'categoria_funcional',
     ];
 
     public function modelo()
     {
         return $this->belongsTo(Modelo::class);
+    }
+
+    public function molde()
+    {
+        return $this->belongsTo(Molde::class);
     }
 }

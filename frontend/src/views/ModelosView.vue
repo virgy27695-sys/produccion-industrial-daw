@@ -8,8 +8,10 @@ import {
     deleteModelo,
 } from "../api/modelos"
 import { useToastStore } from "../stores/toast"
+import { isAdmin } from "../utils/auth"
 
 const toast = useToastStore()
+const admin = isAdmin()
 
 const modelos = ref([])
 const clientes = ref([])
@@ -134,8 +136,8 @@ onMounted(loadData)
             </p>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-1">
+        <div class="grid grid-cols-1 gap-6" :class="admin ? 'xl:grid-cols-3' : 'xl:grid-cols-1'">
+            <div v-if="admin" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-1">
                 <h3 class="mb-4 text-lg font-semibold text-slate-800">
                     {{ isEditing ? "Editar modelo" : "Nuevo modelo" }}
                 </h3>
@@ -181,7 +183,8 @@ onMounted(loadData)
                 </form>
             </div>
 
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-2">
+            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+                :class="admin ? 'xl:col-span-2' : 'xl:col-span-1'">
                 <div class="mb-4 flex items-center justify-between gap-3">
                     <h3 class="text-lg font-semibold text-slate-800">
                         Listado de modelos
@@ -206,16 +209,18 @@ onMounted(loadData)
                                 <th class="px-4 py-2">ID</th>
                                 <th class="px-4 py-2">Modelo</th>
                                 <th class="px-4 py-2">Cliente</th>
-                                <th class="px-4 py-2 text-right">Acciones</th>
+                                <th v-if="admin" class="px-4 py-2 text-right">Acciones</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             <tr v-for="modelo in modelos" :key="modelo.id" class="bg-slate-50 text-slate-800">
-                                <td class="rounded-l-xl px-4 py-3">{{ modelo.id }}</td>
+                                <td class="px-4 py-3 rounded-l-xl">{{ modelo.id }}</td>
                                 <td class="px-4 py-3 font-medium">{{ modelo.nombre }}</td>
-                                <td class="px-4 py-3">{{ modelo.cliente?.nombre }}</td>
-                                <td class="rounded-r-xl px-4 py-3">
+                                <td class="px-4 py-3" :class="!admin ? 'rounded-r-xl' : ''">
+                                    {{ modelo.cliente?.nombre }}
+                                </td>
+                                <td v-if="admin" class="rounded-r-xl px-4 py-3">
                                     <div class="flex justify-end gap-2">
                                         <button @click="editModelo(modelo)"
                                             class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-white">
@@ -231,7 +236,7 @@ onMounted(loadData)
                             </tr>
 
                             <tr v-if="modelos.length === 0">
-                                <td colspan="4" class="px-4 py-6 text-center text-sm text-slate-500">
+                                <td :colspan="admin ? 4 : 3" class="px-4 py-6 text-center text-sm text-slate-500">
                                     No hay modelos registrados.
                                 </td>
                             </tr>
