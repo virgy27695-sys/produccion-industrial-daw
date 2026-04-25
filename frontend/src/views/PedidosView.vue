@@ -1,4 +1,5 @@
 <script setup>
+// IMPORTS
 import { ref, onMounted, computed } from "vue"
 import {
   getPedidos,
@@ -9,19 +10,27 @@ import {
 import { apiGet } from "../api/http"
 import { isAdmin } from "../utils/auth"
 
+
+// USUARIO ACTUAL
+// Se usa para limitar acciones según el rol.
 const admin = isAdmin()
 
-const pedidos = ref([])
-const programas = ref([])
-const piezas = ref([])
 
-const loading = ref(false)
-const saving = ref(false)
-const error = ref("")
-const showForm = ref(false)
-const editingId = ref(null)
-const search = ref("")
+// ESTADO REACTIVO
+const pedidos = ref([])       // Lista de pedidos
+const programas = ref([])     // Programas disponibles
+const piezas = ref([])        // Piezas disponibles
 
+const loading = ref(false)    // Control de carga inicial
+const saving = ref(false)     // Control de guardado
+const error = ref("")         // Mensajes de error
+const showForm = ref(false)   // Muestra u oculta el formulario
+const editingId = ref(null)   // ID del pedido en edición
+const search = ref("")        // Texto de búsqueda
+
+
+// FORMULARIO DE PEDIDO
+// Cada pedido se crea a partir de un programa y puede tener varias líneas.
 const form = ref({
   programa_id: "",
   fecha_pedido: "",
@@ -34,6 +43,12 @@ const form = ref({
   ],
 })
 
+
+// FILTRADO DE PEDIDOS
+// Permite buscar por:
+// - ID
+// - cliente
+// - estado
 const pedidosFiltrados = computed(() => {
   const term = search.value.toLowerCase().trim()
 
@@ -48,14 +63,24 @@ const pedidosFiltrados = computed(() => {
   })
 })
 
+
+// CARGA DE DATOS DESDE API
+// Se usa Promise.all para cargar pedidos, programas y piezas en paralelo.
+// Esto mejora el tiempo de carga porque las peticiones no dependen entre sí.
 async function loadData() {
   loading.value = true
   error.value = ""
 
   try {
-    pedidos.value = await getPedidos()
-    programas.value = await apiGet("/programas")
-    piezas.value = await apiGet("/piezas")
+    const [pedidosData, programasData, piezasData] = await Promise.all([
+      getPedidos(),
+      apiGet("/programas"),
+      apiGet("/piezas"),
+    ])
+
+    pedidos.value = pedidosData
+    programas.value = programasData
+    piezas.value = piezasData
   } catch (e) {
     error.value = "No se pudieron cargar los pedidos."
     console.error(e)
@@ -64,6 +89,8 @@ async function loadData() {
   }
 }
 
+
+// REINICIAR FORMULARIO
 function resetForm() {
   form.value = {
     programa_id: "",
@@ -78,6 +105,9 @@ function resetForm() {
   }
 }
 
+
+// ABRIR FORMULARIO DE CREACIÓN
+// Solo el admin puede crear pedidos nuevos.
 function openCreate() {
   if (!admin) return
 
@@ -86,8 +116,13 @@ function openCreate() {
   showForm.value = true
 }
 
+
+// ABRIR FORMULARIO DE EDICIÓN
+// Admin puede editar todo.
+// Operario puede cambiar el estado.
 function openEdit(pedido) {
   editingId.value = pedido.id
+
   form.value = {
     programa_id: pedido.programa_id,
     fecha_pedido: pedido.fecha_pedido || "",
@@ -97,13 +132,19 @@ function openEdit(pedido) {
       cantidad: detalle.cantidad,
     })),
   }
+
   showForm.value = true
 }
 
+
+// CERRAR FORMULARIO
 function closeForm() {
   showForm.value = false
 }
 
+
+// AÑADIR LÍNEA AL PEDIDO
+// Solo disponible para admin.
 function addDetalle() {
   if (!admin) return
 
@@ -113,6 +154,9 @@ function addDetalle() {
   })
 }
 
+
+// ELIMINAR LÍNEA DEL PEDIDO
+// Se mantiene siempre al menos una línea.
 function removeDetalle(index) {
   if (!admin) return
   if (form.value.detalles.length === 1) return
@@ -120,6 +164,10 @@ function removeDetalle(index) {
   form.value.detalles.splice(index, 1)
 }
 
+
+// GUARDAR PEDIDO
+// Si es admin, guarda el pedido completo.
+// Si es operario, solo se envía cambio de estado conservando los datos originales.
 async function submitForm() {
   saving.value = true
   error.value = ""
@@ -157,6 +205,9 @@ async function submitForm() {
   }
 }
 
+
+// ELIMINAR PEDIDO
+// Acción restringida a admin.
 async function removePedido(id) {
   if (!admin) return
   if (!confirm("¿Seguro que quieres eliminar este pedido?")) return
@@ -172,10 +223,15 @@ async function removePedido(id) {
   }
 }
 
+
+// CALCULAR TOTAL DE PIEZAS
+// Suma las cantidades de todas las líneas de un pedido.
 function getTotalPiezas(detalles) {
   return detalles.reduce((total, detalle) => total + detalle.cantidad, 0)
 }
 
+
+// INICIALIZACIÓN
 onMounted(loadData)
 </script>
 
@@ -279,23 +335,42 @@ onMounted(loadData)
               <thead>
                 <tr class="text-left text-slate-500">
                   <th class="px-4 py-2">Pieza</th>
+                  <th class="px-4 py-2">Molde</th>
+                  <th class="px-4 py-2">Lado</th>
+                  <th class="px-4 py-2">Categoría</th>
                   <th class="px-4 py-2">Cantidad</th>
                 </tr>
               </thead>
 
               <tbody>
+                <!-- LÍNEAS DEL PEDIDO -->
+                <!-- Cada línea muestra la pieza solicitada y su información productiva asociada -->
                 <tr v-for="detalle in pedido.detalles" :key="detalle.id" class="bg-white text-slate-800">
                   <td class="rounded-l-xl px-4 py-3">
                     {{ detalle.pieza?.codigo || "—" }} -
                     {{ detalle.pieza?.denominacion || "Sin denominación" }}
                   </td>
-                  <td class="rounded-r-xl px-4 py-3">
+
+                  <td class="px-4 py-3">
+                    {{ detalle.pieza?.molde?.codigo || "Sin molde" }}
+                  </td>
+
+                  <td class="px-4 py-3">
+                    {{ detalle.pieza?.lado_pieza || "—" }}
+                  </td>
+
+                  <td class="px-4 py-3">
+                    {{ detalle.pieza?.categoria_funcional || "—" }}
+                  </td>
+
+                  <td class="rounded-r-xl px-4 py-3 font-semibold">
                     {{ detalle.cantidad }}
                   </td>
                 </tr>
 
+                <!-- MENSAJE CUANDO EL PEDIDO NO TIENE LÍNEAS -->
                 <tr v-if="pedido.detalles.length === 0">
-                  <td colspan="2" class="px-4 py-4 text-center text-slate-500">
+                  <td colspan="5" class="px-4 py-4 text-center text-slate-500">
                     Este pedido no tiene líneas.
                   </td>
                 </tr>

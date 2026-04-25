@@ -12,7 +12,7 @@ class PedidoController extends Controller
     {
         $pedidos = Pedido::with([
             'programa.cliente',
-            'detalles.pieza'
+            'detalles.pieza.molde'
         ])->latest()->get();
 
         return response()->json($pedidos);
@@ -22,7 +22,7 @@ class PedidoController extends Controller
     {
         $pedido = Pedido::with([
             'programa.cliente',
-            'detalles.pieza'
+            'detalles.pieza.molde'
         ])->findOrFail($id);
 
         return response()->json($pedido);
@@ -55,7 +55,7 @@ class PedidoController extends Controller
 
             return $pedido->load([
                 'programa.cliente',
-                'detalles.pieza'
+                'detalles.pieza.molde'
             ]);
         });
 
@@ -93,7 +93,7 @@ class PedidoController extends Controller
 
             return $pedido->load([
                 'programa.cliente',
-                'detalles.pieza'
+                'detalles.pieza.molde'
             ]);
         });
 
