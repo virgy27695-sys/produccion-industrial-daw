@@ -1,14 +1,18 @@
 <script setup>
 // IMPORTS
 import { computed, onMounted, ref } from "vue"
-import { getProgramas } from "../api/programas"
+import { getProgramas, importarPrograma } from "../api/programas"
 
 
 // ESTADO REACTIVO
-const programas = ref([])      // Lista de programas
-const loading = ref(false)     // Control de carga
-const error = ref("")          // Mensaje de error
-const busqueda = ref("")       // Texto de búsqueda
+const programas = ref([])          // Lista de programas
+const loading = ref(false)         // Control de carga
+const importing = ref(false)       // Control de importación de Excel
+const error = ref("")              // Mensaje de error
+const success = ref("")            // Mensaje de éxito
+const busqueda = ref("")           // Texto de búsqueda
+const selectedProgramaId = ref("") // Programa seleccionado para importar Excel
+const selectedFile = ref(null)     // Archivo Excel seleccionado
 
 
 // FILTRADO DE PROGRAMAS
@@ -24,7 +28,6 @@ const busqueda = ref("")       // Texto de búsqueda
 // - categoría funcional
 // - familia
 // - año / semana
-
 const programasFiltrados = computed(() => {
   const texto = busqueda.value.trim().toLowerCase()
 
@@ -84,6 +87,50 @@ async function loadProgramas() {
 }
 
 
+// SELECCIONAR EXCEL
+// Guarda el archivo elegido para importar el programa.
+function onFileChange(event) {
+  selectedFile.value = event.target.files?.[0] || null
+}
+
+
+// IMPORTAR EXCEL
+// Envía el archivo al backend para actualizar las semanas del programa seleccionado.
+// No crea piezas nuevas: solo actualiza referencias existentes.
+async function importarExcel() {
+  if (!selectedProgramaId.value) {
+    error.value = "Debes seleccionar un programa antes de importar."
+    success.value = ""
+    return
+  }
+
+  if (!selectedFile.value) {
+    error.value = "Debes seleccionar un archivo Excel antes de importar."
+    success.value = ""
+    return
+  }
+
+  importing.value = true
+  error.value = ""
+  success.value = ""
+
+  try {
+    await importarPrograma(selectedProgramaId.value, selectedFile.value)
+
+    success.value = "Programa importado correctamente."
+    selectedProgramaId.value = ""
+    selectedFile.value = null
+
+    await loadProgramas()
+  } catch (e) {
+    error.value = e.message || "No se pudo importar el programa."
+    console.error(e)
+  } finally {
+    importing.value = false
+  }
+}
+
+
 // CALCULAR TOTAL DE UNIDADES
 function getTotalUnidades(detalles = []) {
   return detalles.reduce(
@@ -95,7 +142,6 @@ function getTotalUnidades(detalles = []) {
 
 // FORMATEAR SEMANAS
 // Ejemplo: 2026-S08, 2026-S09
-
 function getSemanasTexto(detalles = []) {
   const semanas = [
     ...new Set(
@@ -139,6 +185,49 @@ onMounted(loadProgramas)
       <p v-if="error" class="mb-4 text-sm text-red-600">
         {{ error }}
       </p>
+
+      <p v-if="success" class="mb-4 text-sm text-green-600">
+        {{ success }}
+      </p>
+
+      <!-- IMPORTACIÓN GENERAL DE EXCEL -->
+      <!-- Permite actualizar un programa existente con el Excel enviado por el cliente -->
+      <div class="mb-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+        <div class="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">
+              Programa a actualizar
+            </label>
+
+            <select v-model="selectedProgramaId"
+              class="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+              <option value="">Selecciona un programa</option>
+              <option v-for="programa in programas" :key="programa.id" :value="programa.id">
+                Programa #{{ programa.id }} - {{ programa.cliente?.nombre || "Sin cliente" }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">
+              Archivo Excel
+            </label>
+
+            <input type="file" accept=".xlsx,.xls"
+              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-600"
+              @change="onFileChange" />
+          </div>
+
+          <button type="button" :disabled="importing" @click="importarExcel"
+            class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+            {{ importing ? "Importando..." : "Importar Excel" }}
+          </button>
+        </div>
+
+        <p class="mt-3 text-xs text-slate-500">
+          Solo se actualizan referencias existentes. Las piezas nuevas deben darse de alta manualmente.
+        </p>
+      </div>
 
       <p v-if="loading" class="text-sm text-slate-500">
         Cargando programas...

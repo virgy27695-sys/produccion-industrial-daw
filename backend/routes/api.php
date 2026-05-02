@@ -13,6 +13,7 @@ use App\Http\Controllers\ProgramaDetalleController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\ProduccionController; 
 use App\Http\Controllers\SituacionController;
+use App\Http\Controllers\AuthController;
 
 
 /*
@@ -24,6 +25,11 @@ use App\Http\Controllers\SituacionController;
 |--------------------------------------------------------------------------
 */
 
+
+// AUTENTICACIÓN
+// Rutas usadas por el frontend para iniciar y cerrar sesión.
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout']);
 
 // CLIENTES
 // Gestión de clientes del sistema
@@ -78,3 +84,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // Endpoint para obtener resumen de situación real por pieza
 // Incluye necesidades, producción, entregas, stock y estado
 Route::get('/situacion', [SituacionController::class, 'resumen']);
+
+// IMPORTACIÓN DE EXCEL DE PROGRAMAS
+// Actualiza el detalle semanal de un programa existente.
+Route::post('/programas/{id}/importar', [ProgramaNecesidadController::class, 'importar']);
