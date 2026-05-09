@@ -13,16 +13,26 @@ class Fabricacion extends Model
     // CAMPOS ASIGNABLES
     protected $fillable = [
         'pieza_id',
+        'molde_id',
         'fecha',
+        'turno',
         'anio',
         'semana',
         'cantidad',
+        'observaciones',
     ];
 
     // RELACIÓN CON PIEZA
-    // Cada registro de fabricación pertenece a una pieza.
+    // Cada fabricación pertenece a una pieza.
     public function pieza()
     {
         return $this->belongsTo(Pieza::class);
+    }
+
+    // RELACIÓN CON MOLDE
+    // Permite saber qué molde estuvo trabajando en ese turno.
+    public function molde()
+    {
+        return $this->belongsTo(Molde::class);
     }
 }

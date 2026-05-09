@@ -11,9 +11,12 @@ use App\Http\Controllers\MoldeController;
 use App\Http\Controllers\ProgramaNecesidadController;
 use App\Http\Controllers\ProgramaDetalleController;
 use App\Http\Controllers\PedidoController;
-use App\Http\Controllers\ProduccionController; 
+use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\SituacionController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\FabricacionController;
+use App\Http\Controllers\EntregaController;
+use App\Http\Controllers\PlanningController;
 
 
 /*
@@ -88,3 +91,16 @@ Route::get('/situacion', [SituacionController::class, 'resumen']);
 // IMPORTACIÓN DE EXCEL DE PROGRAMAS
 // Actualiza el detalle semanal de un programa existente.
 Route::post('/programas/{id}/importar', [ProgramaNecesidadController::class, 'importar']);
+
+// FABRICACIONES
+// Registros de producción real por pieza.
+Route::apiResource('fabricaciones', FabricacionController::class);
+
+
+// ENTREGAS
+// Registros de entregas reales al cliente por pieza.
+Route::apiResource('entregas', EntregaController::class);
+
+// PLANNING SEMANAL INDUSTRIAL
+// Vista principal de planificación tipo Excel industrial.
+Route::get('/planning/semanal', [PlanningController::class, 'semanal']);

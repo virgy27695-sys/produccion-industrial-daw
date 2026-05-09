@@ -11,6 +11,7 @@ import LoginView from '../views/LoginView.vue'
 import MoldesView from '../views/MoldesView.vue'
 import ProduccionView from '../views/ProduccionView.vue'
 import SituacionView from '../views/SituacionView.vue'
+import MovimientosView from '../views/MovimientosView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -63,6 +64,11 @@ const router = createRouter({
     {
       path: '/situacion',
       component: SituacionView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/movimientos',
+      component: MovimientosView,
       meta: { requiresAuth: true },
     },
   ],
