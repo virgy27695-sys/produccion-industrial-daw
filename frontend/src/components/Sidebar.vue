@@ -1,123 +1,116 @@
 <script setup>
-// IMPORTS
-import { ref } from "vue"
-import { useRoute } from "vue-router"
+import { computed } from "vue"
+import { RouterLink, useRoute } from "vue-router"
 
-import {
-  LayoutDashboard,
-  Users,
-  Boxes,
-  Package,
-  ClipboardList,
-  ShoppingCart,
-  Menu,
-  X,
-  Wrench,
-  Factory,
-  Activity,
-  Repeat,
-} from "lucide-vue-next"
+const props = defineProps({
+  collapsed: Boolean,
+})
 
-import { getCurrentUser } from "../utils/auth"
+const emit = defineEmits(["toggle"])
 
-
-// ESTADO DEL SIDEBAR
 const route = useRoute()
-const open = ref(false)
-const user = getCurrentUser()
 
-
-// ENLACES DEL MENÚ
-// Los enlaces de administración solo se muestran al usuario admin.
-// Producción y situación se muestran a todos porque son vistas operativas.
-const links = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
-
-  ...(user?.role === "admin"
-    ? [
-      { name: "Clientes", path: "/clientes", icon: Users },
-      { name: "Modelos", path: "/modelos", icon: Boxes },
-    ]
-    : []),
-
-  { name: "Piezas", path: "/piezas", icon: Package },
-
-  { name: "Moldes", path: "/moldes", icon: Wrench },
-
-  { name: "Programas", path: "/programas", icon: ClipboardList },
-
-  { name: "Producción", path: "/produccion", icon: Factory },
-
-  { name: "Pedidos", path: "/pedidos", icon: ShoppingCart },
-
-  { name: "Situación", path: "/situacion", icon: Activity },
-
-  // REGISTRO DE MOVIMIENTOS
-  // Permite registrar:
-  // - fabricación
-  // - entregas
-  // para alimentar el semáforo y la situación real.
-  { name: "Movimientos", path: "/movimientos", icon: Repeat },
+const items = [
+  {
+    name: "Dashboard",
+    icon: "fa-solid fa-table-columns",
+    to: "/",
+  },
+  {
+    name: "Clientes",
+    icon: "fa-regular fa-user",
+    to: "/clients",
+  },
+  {
+    name: "Modelos",
+    icon: "fa-solid fa-cubes",
+    to: "/models",
+  },
+  {
+    name: "Piezas",
+    icon: "fa-solid fa-cube",
+    to: "/parts",
+  },
+  {
+    name: "Moldes",
+    icon: "fa-solid fa-wrench",
+    to: "/molds",
+  },
+  {
+    name: "Programas",
+    icon: "fa-regular fa-clipboard",
+    to: "/programs",
+  },
+  {
+    name: "Producción",
+    icon: "fa-solid fa-industry",
+    to: "/production",
+  },
+  {
+    name: "Pedidos",
+    icon: "fa-solid fa-cart-shopping",
+    to: "/orders",
+  },
+  {
+    name: "Situación",
+    icon: "fa-solid fa-wave-square",
+    to: "/status",
+  },
 ]
 
-
-// COMPROBAR RUTA ACTIVA
 function isActive(path) {
   return route.path === path
-}
-
-
-// CERRAR MENÚ MÓVIL
-function closeMenu() {
-  open.value = false
 }
 </script>
 
 <template>
-  <!-- BOTÓN MENÚ MÓVIL -->
-  <button @click="open = true"
-    class="fixed left-4 top-4 z-50 rounded-xl bg-white p-2 text-slate-700 shadow-md ring-1 ring-slate-200 md:hidden"
-    aria-label="Abrir menú">
-    <Menu class="h-5 w-5" />
-  </button>
+  <aside :class="[
+    collapsed ? 'w-[92px]' : 'w-[280px]',
+    'relative flex min-h-screen flex-col overflow-hidden border-r border-white/70 bg-gradient-to-b from-[#F8FBFD] via-[#EEF7FA] to-[#DFF3F8] shadow-xl shadow-slate-300/40 transition-all duration-300',
+  ]">
+    <!-- GLOW -->
+    <div class="absolute -top-20 left-10 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl"></div>
 
+    <!-- HEADER -->
+      <div class="overflow-hidden transition-all duration-300"
+        :class="collapsed ? 'w-0 opacity-0' : 'w-[220px] opacity-100'">
+        <img src="/logo-isavex.png" alt="ISAVEX"
+          class="h-28 w-auto -translate-x-4 object-contain drop-shadow-[0_0_14px_rgba(89,199,216,0.25)]" />
+      </div>
 
-  <!-- OVERLAY MÓVIL -->
-  <div v-if="open" class="fixed inset-0 z-40 bg-black/40 md:hidden" @click="closeMenu"></div>
+    <!-- NAV -->
+    <nav class="relative z-10 flex-1 space-y-2 px-4 py-5">
+      <RouterLink v-for="item in items" :key="item.to" :to="item.to" :class="[
+        isActive(item.to)
+          ? 'bg-gradient-to-r from-[#59C7D8] to-[#49B3C2] text-[#081426] shadow-lg shadow-cyan-500/20'
+          : 'text-slate-600 hover:bg-white/70 hover:text-[#081426]',
+        collapsed
+          ? 'justify-center px-0'
+          : 'justify-start px-4',
+        'group flex h-14 items-center gap-4 rounded-2xl transition-all duration-200',
+      ]">
+        <i :class="[item.icon, 'text-lg']"></i>
 
-
-  <!-- SIDEBAR -->
-  <aside
-    class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white p-4 transition-transform duration-300 md:static md:translate-x-0"
-    :class="open ? 'translate-x-0' : '-translate-x-full'">
-    <!-- CABECERA -->
-    <div class="mb-8 flex items-center justify-between">
-      <h1 class="text-xl font-bold text-slate-800">
-        Producción
-      </h1>
-
-      <button @click="closeMenu" class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
-        aria-label="Cerrar menú">
-        <X class="h-5 w-5" />
-      </button>
-    </div>
-
-
-    <!-- NAVEGACIÓN -->
-    <nav class="flex flex-col gap-2">
-
-      <RouterLink v-for="link in links" :key="link.path" :to="link.path" @click="closeMenu"
-        class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition" :class="isActive(link.path)
-            ? 'bg-blue-600 text-white'
-            : 'text-slate-700 hover:bg-slate-100'
-          ">
-        <component :is="link.icon" class="h-5 w-5" />
-
-        <span>
-          {{ link.name }}
+        <span v-if="!collapsed" class="text-sm font-medium">
+          {{ item.name }}
         </span>
       </RouterLink>
-
     </nav>
+
+    <!-- FOOT -->
+    <div class="relative z-10 p-4">
+      <div class="rounded-3xl border border-[#59C7D8]/30 bg-white/70 p-5 shadow-sm backdrop-blur-xl">
+        <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-[#59C7D8]">
+          <div class="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_12px_#59C7D8]"></div>
+          <span v-if="!collapsed">
+            Sistema activo
+          </span>
+        </div>
+
+        <p v-if="!collapsed" class="text-sm leading-7 text-slate-600">
+          Plataforma de planificación, producción y trazabilidad industrial.
+        </p>
+      </div>
+    </div>
   </aside>
 </template>

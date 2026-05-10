@@ -1,1 +1,114 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+
+:root {
+  --color-isavex-navy: #081426;
+  --color-isavex-navy-soft: #10233d;
+
+  --color-isavex-aqua: #59c7d8;
+  --color-isavex-aqua-dark: #41b4c6;
+
+  --color-isavex-bg: #f4f8fb;
+  --color-isavex-text: #0f172a;
+  --color-isavex-text-soft: #64748b;
+
+  --color-isavex-card: rgba(255, 255, 255, 0.78);
+  --color-isavex-border: rgba(255, 255, 255, 0.65);
+
+  --shadow-isavex: 0 10px 40px rgba(15, 23, 42, 0.08);
+  --radius-isavex: 24px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--color-isavex-bg);
+  color: var(--color-isavex-text);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+@layer utilities {
+  .isavex-card {
+    background: var(--color-isavex-card);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--color-isavex-border);
+    border-radius: var(--radius-isavex);
+    box-shadow: var(--shadow-isavex);
+  }
+
+  .isavex-button {
+    background: var(--color-isavex-aqua);
+    color: var(--color-isavex-navy);
+    font-weight: 600;
+    border-radius: 18px;
+    transition: all 0.25s ease;
+    box-shadow: 0 10px 25px rgba(89, 199, 216, 0.35);
+  }
+
+  .isavex-button:hover {
+    background: var(--color-isavex-aqua-dark);
+    transform: translateY(-1px);
+  }
+
+  .isavex-input {
+    width: 100%;
+    border-radius: 18px;
+    border: 1px solid #cbd5e1;
+    background: rgba(255, 255, 255, 0.75);
+    padding: 0.85rem 1rem;
+    outline: none;
+    transition: 0.2s ease;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  }
+
+  .isavex-input:focus {
+    border-color: var(--color-isavex-aqua);
+    box-shadow: 0 0 0 5px rgba(89, 199, 216, 0.18);
+  }
+
+  .isavex-glow {
+    box-shadow: 0 0 80px rgba(89, 199, 216, 0.18);
+  }
+}

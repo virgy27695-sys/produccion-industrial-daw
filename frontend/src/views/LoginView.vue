@@ -18,11 +18,7 @@ const errors = ref({
 })
 
 function validateForm() {
-    errors.value = {
-        email: "",
-        password: "",
-        general: "",
-    }
+    errors.value = { email: "", password: "", general: "" }
 
     let valid = true
 
@@ -72,37 +68,54 @@ async function submit() {
 </script>
 
 <template>
-    <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-100 px-4 py-10">
-        <!-- Fondo decorativo -->
-        <div class="absolute inset-0">
-            <div class="absolute left-0 top-0 h-72 w-72 rounded-full bg-sky-100 blur-3xl"></div>
-            <div class="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-blue-100 blur-3xl"></div>
-        </div>
-
+    <div class="mx-auto w-full max-w-6xl">
         <div
-            class="relative z-10 grid w-full max-w-6xl grid-cols-1 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl lg:grid-cols-2">
-            <!-- Lado izquierdo -->
+            class="grid overflow-hidden rounded-[2rem] border border-white/70 bg-white/80 shadow-2xl shadow-slate-300/60 backdrop-blur-xl lg:grid-cols-2">
+            <!-- PANEL IZQUIERDO -->
             <div
-                class="hidden bg-gradient-to-br from-slate-900 via-slate-800 to-sky-900 p-10 text-white lg:flex lg:flex-col lg:justify-between">
-                <div>  
+                class="relative hidden min-h-[460px] overflow-hidden bg-gradient-to-br from-[#F8FBFD] via-[#EEF7FA] to-[#DFF3F8] p-10 lg:flex lg:flex-col lg:justify-between">
+                <div class="absolute -right-24 top-10 h-80 w-80 rounded-full bg-[#59C7D8]/20 blur-3xl"></div>
+                <div class="absolute -bottom-24 left-10 h-72 w-72 rounded-full bg-blue-400/10 blur-3xl"></div>
 
-                    <h1 class="max-w-md text-4xl font-bold leading-tight">
-                        Sistema de Producción Industrial
+                <div class="relative z-10">
+                    <img src="/logo-isavex.png" alt="ISAVEX"
+                        class="mb-10 h-24 w-auto object-contain drop-shadow-[0_0_18px_rgba(89,199,216,0.35)]" />
+
+                    <h1 class="max-w-md text-4xl font-bold leading-tight text-[#081426]">
+                        Gestión inteligente de producción industrial
                     </h1>
 
+                    <p class="mt-6 max-w-md text-sm leading-7 text-slate-600">
+                        Planifica programas semanales, controla moldes, registra producción por turnos
+                        y visualiza la situación real de planta desde una única plataforma.
+                    </p>
+                </div>
+
+                <div class="relative z-10 grid grid-cols-3 gap-3 text-center text-xs text-[#081426]">
+                    <div class="rounded-2xl border border-[#59C7D8]/40 bg-white/70 p-4 shadow-sm backdrop-blur">
+                        Planning
+                    </div>
+
+                    <div class="rounded-2xl border border-[#59C7D8]/40 bg-white/70 p-4 shadow-sm backdrop-blur">
+                        Producción
+                    </div>
+
+                    <div class="rounded-2xl border border-[#59C7D8]/40 bg-white/70 p-4 shadow-sm backdrop-blur">
+                        Trazabilidad
+                    </div>
                 </div>
             </div>
 
-            <!-- Lado derecho -->
-            <div class="flex items-center justify-center bg-white p-6 sm:p-10">
+            <!-- PANEL DERECHO -->
+            <div class="flex items-center justify-center bg-white/90 p-6 sm:p-10">
                 <div class="w-full max-w-md">
                     <div class="mb-8 text-center lg:text-left">
-                        <h2 class="text-3xl font-bold text-slate-800">
+                        <h2 class="text-3xl font-bold text-slate-900">
                             Iniciar sesión
                         </h2>
 
                         <p class="mt-2 text-sm text-slate-500">
-                            Introduce tus credenciales para acceder al panel de gestión.
+                            Accede al panel de planificación y control de producción.
                         </p>
                     </div>
 
@@ -111,14 +124,14 @@ async function submit() {
                         {{ errors.general }}
                     </div>
 
-                    <form @submit.prevent="submit" class="space-y-5">
+                    <form class="space-y-5" @submit.prevent="submit">
                         <div>
                             <label for="email" class="mb-1 block text-sm font-medium text-slate-700">
                                 Correo electrónico <span class="text-red-500">*</span>
                             </label>
 
                             <input id="email" v-model="email" type="email" autocomplete="username"
-                                class="block w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-800 shadow-sm outline-none transition focus:border-sky-600 focus:ring-4 focus:ring-sky-100"
+                                class="block w-full rounded-xl border border-slate-300 bg-white/80 px-4 py-3 text-slate-800 shadow-sm outline-none transition focus:border-[#59C7D8] focus:ring-4 focus:ring-cyan-100"
                                 placeholder="correo@empresa.com" />
 
                             <p v-if="errors.email" class="mt-2 text-sm text-red-600">
@@ -134,7 +147,7 @@ async function submit() {
                             <div class="relative">
                                 <input id="password" v-model="password" :type="showPassword ? 'text' : 'password'"
                                     autocomplete="current-password"
-                                    class="block w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-12 text-slate-800 shadow-sm outline-none transition focus:border-sky-600 focus:ring-4 focus:ring-sky-100"
+                                    class="block w-full rounded-xl border border-slate-300 bg-white/80 px-4 py-3 pr-12 text-slate-800 shadow-sm outline-none transition focus:border-[#59C7D8] focus:ring-4 focus:ring-cyan-100"
                                     placeholder="Introduce tu contraseña" />
 
                                 <button type="button"
@@ -165,18 +178,19 @@ async function submit() {
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <label class="flex items-center gap-2">
                                 <input v-model="remember" type="checkbox"
-                                    class="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
+                                    class="h-4 w-4 rounded border-slate-300 text-[#59C7D8] focus:ring-[#59C7D8]" />
+
                                 <span class="text-sm text-slate-600">Recuérdame</span>
                             </label>
 
                             <button type="button"
-                                class="text-sm font-medium text-sky-700 underline underline-offset-4 hover:text-sky-800">
+                                class="text-sm font-medium text-cyan-700 underline underline-offset-4 hover:text-cyan-800">
                                 ¿Has olvidado tu contraseña?
                             </button>
                         </div>
 
                         <button type="submit" :disabled="processing"
-                            class="flex w-full justify-center rounded-xl bg-sky-600 px-4 py-3 font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60">
+                            class="flex w-full justify-center rounded-xl bg-[#59C7D8] px-4 py-3 font-semibold text-[#081426] shadow-lg shadow-cyan-200/50 transition hover:bg-[#49B3C2] disabled:cursor-not-allowed disabled:opacity-60">
                             {{ processing ? "Iniciando sesión..." : "Iniciar sesión" }}
                         </button>
                     </form>
