@@ -1,43 +1,68 @@
 <script setup>
 // IMPORTS
-
 import { computed, onMounted, ref } from "vue"
+import { useHead } from "@vueuse/head"
+
+// ICONOS
+// Se usan para acciones compactas y responsive.
+import {
+    Pencil,
+    Trash2,
+} from "lucide-vue-next"
+
 import { getClientes } from "../api/clientes"
 import { getModelos } from "../api/modelos"
 import { getMoldes } from "../api/moldes"
+
 import {
     getPiezas,
     createPieza,
     updatePieza,
     deletePieza,
 } from "../api/piezas"
+
 import { useToastStore } from "../stores/toast"
 import { isAdmin } from "../utils/auth"
+
+// COMPOSABLE CRUD
+import { useCrud } from "../composables/useCrud"
+
+
+// CONFIGURACIÓN DE LA PÁGINA
+useHead({
+    title: "Piezas · ISAVEX",
+})
 
 
 // ESTADO GENERAL
 const toast = useToastStore()
 const admin = isAdmin()
 
+
+// CRUD GLOBAL
+const {
+    loading,
+    saving,
+    error,
+    formError,
+    executeLoad,
+    executeSave,
+    clearErrors,
+} = useCrud()
+
+
+// LISTAS PRINCIPALES
 const piezas = ref([])
 const clientes = ref([])
 const modelos = ref([])
 const moldes = ref([])
 
-const loading = ref(false)
-const saving = ref(false)
-const error = ref("")
-const formError = ref("")
+
+// BUSCADOR
 const busqueda = ref("")
 
 
 // FORMULARIO DE PIEZAS
-// Incluye nuevos campos productivos:
-// - molde
-// - lado
-// - mercado
-// - categoría funcional
-
 const form = ref({
     id: null,
     codigo: "",
@@ -51,14 +76,11 @@ const form = ref({
 })
 
 
-// SABER SI EL FORMULARIO ESTÁ EN EDICIÓN
-
+// MODO EDICIÓN
 const isEditing = computed(() => form.value.id !== null)
 
 
 // MODELOS FILTRADOS POR CLIENTE
-// Esto evita que se mezclen modelos de otros clientes
-
 const modelosFiltrados = computed(() => {
     if (!form.value.cliente_id) return []
 
@@ -68,17 +90,7 @@ const modelosFiltrados = computed(() => {
 })
 
 
-// FILTRADO DE PIEZAS EN TABLA
-// Busca por:
-// - código
-// - denominación
-// - modelo
-// - cliente
-// - molde
-// - lado
-// - mercado
-// - categoría funcional
-
+// FILTRADO DE PIEZAS
 const piezasFiltradas = computed(() => {
     const texto = busqueda.value.trim().toLowerCase()
 
@@ -99,37 +111,77 @@ const piezasFiltradas = computed(() => {
 })
 
 
-// CARGA INICIAL DE DATOS
-// Se cargan piezas, clientes, modelos y moldes a la vez
+// MÉTRICAS
+const totalConMolde = computed(() =>
+    piezas.value.filter((pieza) => pieza.molde_id || pieza.molde).length
+)
 
+const totalSinMolde = computed(() =>
+    piezas.value.filter((pieza) => !pieza.molde_id && !pieza.molde).length
+)
+
+const categorias = computed(() => {
+    const set = new Set(
+        piezas.value
+            .map((pieza) => pieza.categoria_funcional)
+            .filter(Boolean)
+    )
+
+    return set.size
+})
+
+
+// CARGA DE DATOS
+// Usa Promise.allSettled para que si una API falla,
+// el resto de datos puedan seguir cargando.
 async function loadData() {
-    loading.value = true
-    error.value = ""
+    await executeLoad(async () => {
+        const results = await Promise.allSettled([
+            getPiezas(),
+            getClientes(),
+            getModelos(),
+            getMoldes(),
+        ])
 
-    try {
-        const [piezasData, clientesData, modelosData, moldesData] =
-            await Promise.all([
-                getPiezas(),
-                getClientes(),
-                getModelos(),
-                getMoldes(),
-            ])
+        const [
+            piezasResult,
+            clientesResult,
+            modelosResult,
+            moldesResult,
+        ] = results
 
-        piezas.value = piezasData
-        clientes.value = clientesData
-        modelos.value = modelosData
-        moldes.value = moldesData
-    } catch (e) {
-        error.value = "No se pudieron cargar las piezas."
-        console.error(e)
-    } finally {
-        loading.value = false
-    }
+        piezas.value =
+            piezasResult.status === "fulfilled" && Array.isArray(piezasResult.value)
+                ? piezasResult.value
+                : []
+
+        clientes.value =
+            clientesResult.status === "fulfilled" && Array.isArray(clientesResult.value)
+                ? clientesResult.value
+                : []
+
+        modelos.value =
+            modelosResult.status === "fulfilled" && Array.isArray(modelosResult.value)
+                ? modelosResult.value
+                : []
+
+        moldes.value =
+            moldesResult.status === "fulfilled" && Array.isArray(moldesResult.value)
+                ? moldesResult.value
+                : []
+
+        const hasErrors = results.some(
+            (result) => result.status === "rejected"
+        )
+
+        if (hasErrors) {
+            error.value = "Algunos datos no pudieron cargarse correctamente."
+        }
+    })
 }
 
-// REINICIAR FORMULARIO
-// Deja el formulario limpio para alta nueva
 
+// REINICIAR FORMULARIO
 function resetForm() {
     form.value = {
         id: null,
@@ -143,12 +195,11 @@ function resetForm() {
         categoria_funcional: "",
     }
 
-    formError.value = ""
+    clearErrors()
 }
 
 
-// CARGAR DATOS DE UNA PIEZA EN EDICIÓN
-
+// CARGAR PIEZA EN EDICIÓN
 function editPieza(pieza) {
     form.value = {
         id: pieza.id,
@@ -162,26 +213,17 @@ function editPieza(pieza) {
         categoria_funcional: pieza.categoria_funcional ?? "",
     }
 
-    formError.value = ""
+    clearErrors()
 }
 
-// AL CAMBIAR CLIENTE, LIMPIAMOS MODELO
-// Para evitar que quede seleccionado un modelo
-// que no pertenece al nuevo cliente
 
+// CAMBIO DE CLIENTE
 function onClienteChange() {
     form.value.modelo_id = ""
 }
 
 
-// DETECCIÓN AUTOMÁTICA DE LADO
-//
-// IMPORTANTE:
-// - IZQ / LEFT -> izquierda
-// - DER / RIGHT / DRC -> derecha
-// - TI / TD / LHD / RHD NO definen lado de pieza
-// Si no hay patrón claro, devolvemos neutra
-
+// DETECCIÓN AUTOMÁTICA DEL LADO
 function detectarLadoPieza(denominacion) {
     const texto = (denominacion || "").toUpperCase()
 
@@ -207,13 +249,6 @@ function detectarLadoPieza(denominacion) {
 
 
 // DETECCIÓN AUTOMÁTICA DE MERCADO
-// Casos típicos:
-// - LHD
-// - RHD
-// - TI (tráfico izquierdo)
-// - TD (tráfico derecho)
-// Si no aparece patrón, devuelve vacío
-
 function detectarMercado(denominacion) {
     const texto = (denominacion || "").toUpperCase()
 
@@ -226,10 +261,7 @@ function detectarMercado(denominacion) {
 }
 
 
-// DETECCIÓN AUTOMÁTICA DE CATEGORÍA FUNCIONAL
-// Basada en palabras clave de la denominación.
-// Esto permite clasificar piezas para análisis
-
+// DETECCIÓN AUTOMÁTICA DE CATEGORÍA
 function detectarCategoriaFuncional(denominacion) {
     const texto = (denominacion || "").toUpperCase()
 
@@ -242,11 +274,7 @@ function detectarCategoriaFuncional(denominacion) {
 }
 
 
-// AUTORRELLENO DE CAMPOS PRODUCTIVOS
-// Solo rellena automáticamente si el campo está vacío.
-// Así no pisamos valores que el usuario haya
-// corregido manualmente.
-
+// AUTOCOMPLETADO PRODUCTIVO
 function autocompletarCamposProductivos() {
     const denominacion = form.value.denominacion
 
@@ -267,10 +295,8 @@ function autocompletarCamposProductivos() {
 
 
 // GUARDAR PIEZA
-// Valida campos y envía datos a backend para crear o actualizar pieza según el caso
-
 async function submitForm() {
-    formError.value = ""
+    clearErrors()
 
     if (!form.value.codigo.trim()) {
         formError.value = "El código es obligatorio."
@@ -292,41 +318,38 @@ async function submitForm() {
         return
     }
 
-    saving.value = true
-
     try {
-        const payload = {
-            codigo: form.value.codigo.trim(),
-            denominacion: form.value.denominacion.trim(),
-            modelo_id: form.value.modelo_id,
-            molde_id: form.value.molde_id || null,
-            lado_pieza: form.value.lado_pieza || null,
-            mercado: form.value.mercado || null,
-            categoria_funcional: form.value.categoria_funcional || null,
-        }
+        await executeSave(async () => {
+            const payload = {
+                codigo: form.value.codigo.trim(),
+                denominacion: form.value.denominacion.trim(),
+                modelo_id: form.value.modelo_id,
+                molde_id: form.value.molde_id || null,
+                lado_pieza: form.value.lado_pieza || null,
+                mercado: form.value.mercado || null,
+                categoria_funcional: form.value.categoria_funcional || null,
+            }
 
-        if (isEditing.value) {
-            await updatePieza(form.value.id, payload)
-            toast.show("Pieza actualizada")
-        } else {
-            await createPieza(payload)
-            toast.show("Pieza creada correctamente")
-        }
+            if (isEditing.value) {
+                await updatePieza(form.value.id, payload)
+                toast.show("Pieza actualizada")
+            } else {
+                await createPieza(payload)
+                toast.show("Pieza creada correctamente")
+            }
 
-        resetForm()
-        await loadData()
+            resetForm()
+            await loadData()
+        })
     } catch (e) {
         formError.value = "No se pudo guardar la pieza."
         toast.show("Error al guardar pieza", "error")
         console.error(e)
-    } finally {
-        saving.value = false
     }
 }
 
 
 // ELIMINAR PIEZA
-
 async function removePieza(pieza) {
     const confirmacion = window.confirm(
         `¿Seguro que quieres eliminar la pieza "${pieza.codigo}"?`
@@ -345,185 +368,238 @@ async function removePieza(pieza) {
     }
 }
 
-// INICIALIZACIÓN
 
+// FORMATEAR CATEGORÍA
+function formatCategoria(value) {
+    const categorias = {
+        soporte: "Soporte",
+        guia_luz: "Guía de luz",
+        reflector: "Reflector",
+        embellecedor: "Embellecedor",
+        otro: "Otro",
+    }
+
+    return categorias[value] || "—"
+}
+
+
+// CLASES VISUALES DE BADGES
+function badgeClass(value) {
+    return {
+        "bg-cyan-100 text-cyan-700 ring-cyan-200": value === "soporte",
+        "bg-blue-100 text-blue-700 ring-blue-200": value === "guia_luz",
+        "bg-amber-100 text-amber-700 ring-amber-200": value === "reflector",
+        "bg-violet-100 text-violet-700 ring-violet-200": value === "embellecedor",
+        "bg-slate-100 text-slate-600 ring-slate-200": !value || value === "otro",
+    }
+}
+
+
+// INICIALIZACIÓN
 onMounted(loadData)
 </script>
 
 <template>
     <section class="space-y-6">
-        <!--CABECERA -->
-        <div>
-            <h2 class="mb-4 text-2xl font-semibold text-slate-800">Piezas</h2>
-            <p class="text-slate-600">
-                Gestión de piezas fabricadas, asociadas a cliente, modelo y molde,
-                con información productiva adicional.
-            </p>
-        </div>
+        <!-- HERO PRINCIPAL -->
+        <div
+            class="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-xl shadow-slate-300/40 backdrop-blur-xl">
+            <div class="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#59C7D8]/20 blur-3xl"></div>
 
-        <div class="grid grid-cols-1 gap-6" :class="admin ? 'xl:grid-cols-3' : 'xl:grid-cols-1'">
-            <!--FORMULARIO (solo admin) -->
-            <div v-if="admin" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 xl:col-span-1">
-                <h3 class="mb-4 text-lg font-semibold text-slate-800">
-                    {{ isEditing ? "Editar pieza" : "Nueva pieza" }}
-                </h3>
-
-                <form class="space-y-4" @submit.prevent="submitForm">
-                    <!-- Código -->
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Código
-                        </label>
-                        <input v-model="form.codigo" type="text"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                            placeholder="Ej. 90112502" />
+            <div class="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                    <div
+                        class="mb-3 inline-flex rounded-full border border-[#59C7D8]/40 bg-white/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#1597A8]">
+                        Catálogo técnico
                     </div>
 
-                    <!-- Denominación -->
+                    <h1 class="text-3xl font-bold text-[#081426]">
+                        Piezas
+                    </h1>
+
+                    <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                        Gestión de referencias fabricadas, asociadas a cliente, modelo, molde e información productiva.
+                    </p>
+                </div>
+
+                <!-- KPIs DE LA VISTA -->
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-3xl border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur">
+                        <p class="text-xs uppercase tracking-[0.18em] text-slate-400">Total</p>
+                        <p class="mt-2 text-3xl font-bold text-[#081426]">{{ piezas.length }}</p>
+                    </div>
+
+                    <div class="rounded-3xl border border-cyan-200/60 bg-cyan-50/80 p-5 shadow-sm">
+                        <p class="text-xs uppercase tracking-[0.18em] text-cyan-600">Con molde</p>
+                        <p class="mt-2 text-3xl font-bold text-cyan-700">{{ totalConMolde }}</p>
+                    </div>
+
+                    <div class="rounded-3xl border border-amber-200/60 bg-amber-50/80 p-5 shadow-sm">
+                        <p class="text-xs uppercase tracking-[0.18em] text-amber-600">Categorías</p>
+                        <p class="mt-2 text-3xl font-bold text-amber-700">{{ categorias }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENEDOR PRINCIPAL -->
+        <div class="grid grid-cols-1 gap-6" :class="admin ? 'xl:grid-cols-[420px_1fr]' : 'xl:grid-cols-1'">
+            <!-- FORMULARIO DE ALTA / EDICIÓN -->
+            <div v-if="admin"
+                class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-xl shadow-slate-300/30 backdrop-blur-xl">
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold text-[#081426]">
+                        {{ isEditing ? "Editar pieza" : "Nueva pieza" }}
+                    </h3>
+
+                    <p class="mt-1 text-sm text-slate-500">
+                        Alta de referencias con datos técnicos y productivos.
+                    </p>
+                </div>
+
+                <form class="space-y-4" @submit.prevent="submitForm">
+                    <!-- CÓDIGO DE PIEZA -->
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Denominación
-                        </label>
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">Código</label>
+                        <input v-model="form.codigo" type="text" class="isavex-input" placeholder="Ej. 90112502" />
+                    </div>
+
+                    <!-- DENOMINACIÓN -->
+                    <div>
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">Denominación</label>
                         <input v-model="form.denominacion" type="text" @blur="autocompletarCamposProductivos"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                            placeholder="Ej. SOPORTE INF DRL AUDI AU270 LED I" />
-                        <p class="mt-1 text-xs text-slate-500">
-                            Al salir del campo se intentan detectar automáticamente lado, mercado y categoría.
+                            class="isavex-input" placeholder="Ej. SOPORTE INF DRL AUDI AU270 LED I" />
+                        <p class="mt-2 text-xs leading-5 text-slate-500">
+                            Al salir del campo se intenta detectar lado, mercado y categoría automáticamente.
                         </p>
                     </div>
 
-                    <!-- Cliente -->
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Cliente
-                        </label>
-                        <select v-model="form.cliente_id" @change="onClienteChange"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                            <option value="">Selecciona un cliente</option>
-                            <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">
-                                {{ cliente.nombre }}
-                            </option>
-                        </select>
+                    <!-- CLIENTE Y MODELO -->
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-semibold text-slate-700">Cliente</label>
+                            <select v-model="form.cliente_id" @change="onClienteChange" class="isavex-input">
+                                <option value="">Cliente</option>
+                                <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">
+                                    {{ cliente.nombre }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="mb-1 block text-sm font-semibold text-slate-700">Modelo</label>
+                            <select v-model="form.modelo_id" class="isavex-input">
+                                <option value="">Modelo</option>
+                                <option v-for="modelo in modelosFiltrados" :key="modelo.id" :value="modelo.id">
+                                    {{ modelo.nombre }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
 
-                    <!-- Modelo -->
+                    <!-- MOLDE ASOCIADO -->
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Modelo
-                        </label>
-                        <select v-model="form.modelo_id"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                            <option value="">Selecciona un modelo</option>
-                            <option v-for="modelo in modelosFiltrados" :key="modelo.id" :value="modelo.id">
-                                {{ modelo.nombre }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <!-- Molde -->
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Molde
-                        </label>
-                        <select v-model="form.molde_id"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                            <option value="">Molde (opcional)</option>
+                        <label class="mb-1 block text-sm font-semibold text-slate-700">Molde</label>
+                        <select v-model="form.molde_id" class="isavex-input">
+                            <option value="">Molde opcional</option>
                             <option v-for="molde in moldes" :key="molde.id" :value="molde.id">
                                 {{ molde.codigo }} - {{ molde.descripcion }}
                             </option>
                         </select>
                     </div>
 
-                    <!-- Lado -->
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Lado de pieza
-                        </label>
-                        <select v-model="form.lado_pieza"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                            <option value="">Sin definir</option>
-                            <option value="izquierda">Izquierda</option>
-                            <option value="derecha">Derecha</option>
-                            <option value="neutra">Neutra</option>
-                        </select>
+                    <!-- CAMPOS PRODUCTIVOS -->
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div>
+                            <label class="mb-1 block text-sm font-semibold text-slate-700">Lado</label>
+                            <select v-model="form.lado_pieza" class="isavex-input">
+                                <option value="">—</option>
+                                <option value="izquierda">Izquierda</option>
+                                <option value="derecha">Derecha</option>
+                                <option value="neutra">Neutra</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="mb-1 block text-sm font-semibold text-slate-700">Mercado</label>
+                            <select v-model="form.mercado" class="isavex-input">
+                                <option value="">—</option>
+                                <option value="LHD">LHD</option>
+                                <option value="RHD">RHD</option>
+                                <option value="TI">TI</option>
+                                <option value="TD">TD</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="mb-1 block text-sm font-semibold text-slate-700">Categoría</label>
+                            <select v-model="form.categoria_funcional" class="isavex-input">
+                                <option value="">—</option>
+                                <option value="soporte">Soporte</option>
+                                <option value="guia_luz">Guía luz</option>
+                                <option value="reflector">Reflector</option>
+                                <option value="embellecedor">Embellecedor</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <!-- Mercado -->
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Mercado
-                        </label>
-                        <select v-model="form.mercado"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                            <option value="">Sin definir</option>
-                            <option value="LHD">LHD</option>
-                            <option value="RHD">RHD</option>
-                            <option value="TI">TI</option>
-                            <option value="TD">TD</option>
-                        </select>
-                    </div>
-
-                    <!-- Categoría funcional -->
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Categoría funcional
-                        </label>
-                        <select v-model="form.categoria_funcional"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-                            <option value="">Sin definir</option>
-                            <option value="soporte">Soporte</option>
-                            <option value="guia_luz">Guía de luz</option>
-                            <option value="reflector">Reflector</option>
-                            <option value="embellecedor">Embellecedor</option>
-                            <option value="otro">Otro</option>
-                        </select>
-                    </div>
-
-                    <!-- Error del formulario -->
-                    <p v-if="formError" class="text-sm text-red-600">
+                    <!-- ERROR DEL FORMULARIO -->
+                    <p v-if="formError" class="text-sm font-semibold text-red-600">
                         {{ formError }}
                     </p>
 
-                    <!-- Botones -->
-                    <div class="flex flex-col gap-3 sm:flex-row">
+                    <!-- ACCIONES DEL FORMULARIO -->
+                    <div class="flex flex-col gap-3 pt-2">
                         <button type="submit" :disabled="saving"
-                            class="rounded-xl bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-                            {{ saving ? "Guardando..." : isEditing ? "Actualizar" : "Crear pieza" }}
+                            class="isavex-button px-4 py-3 text-sm disabled:opacity-60">
+                            {{ saving ? "Guardando..." : isEditing ? "Actualizar pieza" : "Crear pieza" }}
                         </button>
 
                         <button v-if="isEditing" type="button" @click="resetForm"
-                            class="rounded-xl border border-slate-300 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-100">
-                            Cancelar
+                            class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                            Cancelar edición
                         </button>
                     </div>
                 </form>
             </div>
 
-            <!--TABLA DE PIEZAS-->
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
-                :class="admin ? 'xl:col-span-2' : 'xl:col-span-1'">
-                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h3 class="text-lg font-semibold text-slate-800">
-                        Listado de piezas
-                    </h3>
+            <!-- LISTADO DE PIEZAS -->
+            <div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-xl shadow-slate-300/30 backdrop-blur-xl"
+                :class="admin ? '' : 'xl:col-span-1'">
+                <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-[#081426]">Listado de piezas</h3>
+                        <p class="mt-1 text-sm text-slate-500">
+                            Referencias disponibles en el sistema.
+                        </p>
+                    </div>
 
-                    <input v-model="busqueda" type="text"
-                        placeholder="Buscar por código, denominación, modelo, cliente, molde, lado o mercado"
-                        class="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 sm:max-w-md" />
+                    <!-- BUSCADOR -->
+                    <div
+                        class="flex w-full items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3 shadow-sm lg:max-w-md">
+                        <span class="text-slate-400">⌕</span>
+                        <input v-model="busqueda" type="text" placeholder="Buscar código, modelo, molde, mercado..."
+                            class="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400" />
+                    </div>
                 </div>
 
-                <p v-if="error" class="mb-4 text-sm text-red-600">
+                <!-- ERROR GENERAL -->
+                <p v-if="error"
+                    class="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
                     {{ error }}
                 </p>
 
+                <!-- ESTADO DE CARGA -->
                 <p v-if="loading" class="text-sm text-slate-500">
                     Cargando piezas...
                 </p>
 
+                <!-- TABLA -->
                 <div v-else class="overflow-x-auto">
-                    <table class="min-w-full border-separate border-spacing-y-2">
+                    <table class="min-w-full border-separate border-spacing-y-3 text-sm">
                         <thead>
-                            <tr class="text-left text-sm text-slate-500">
+                            <tr class="text-left text-xs uppercase tracking-[0.18em] text-slate-400">
                                 <th class="px-4 py-2">Código</th>
                                 <th class="px-4 py-2">Denominación</th>
                                 <th class="px-4 py-2">Modelo</th>
@@ -536,52 +612,63 @@ onMounted(loadData)
                         </thead>
 
                         <tbody>
-                            <tr v-for="pieza in piezasFiltradas" :key="pieza.id" class="bg-slate-50 text-slate-800">
-                                <td class="rounded-l-xl px-4 py-3 font-medium">
+                            <tr v-for="pieza in piezasFiltradas" :key="pieza.id"
+                                class="bg-white/90 text-slate-800 shadow-sm">
+                                <td class="rounded-l-2xl px-4 py-4 font-bold text-[#081426]">
                                     {{ pieza.codigo }}
                                 </td>
 
-                                <td class="px-4 py-3">
+                                <td class="max-w-[360px] px-4 py-4 text-slate-600">
                                     {{ pieza.denominacion }}
                                 </td>
 
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-4">
                                     {{ pieza.modelo?.nombre || "—" }}
                                 </td>
 
-                                <td class="px-4 py-3">
-                                    {{ pieza.molde?.codigo || "—" }}
+                                <td class="px-4 py-4">
+                                    <span
+                                        class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                                        {{ pieza.molde?.codigo || "Sin molde" }}
+                                    </span>
                                 </td>
 
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-4">
                                     {{ pieza.lado_pieza || "—" }}
                                 </td>
 
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-4">
                                     {{ pieza.mercado || "—" }}
                                 </td>
 
-                                <td class="px-4 py-3" :class="!admin ? 'rounded-r-xl' : ''">
-                                    {{ pieza.categoria_funcional || "—" }}
+                                <td class="px-4 py-4" :class="!admin ? 'rounded-r-2xl' : ''">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1"
+                                        :class="badgeClass(pieza.categoria_funcional)">
+                                        {{ formatCategoria(pieza.categoria_funcional) }}
+                                    </span>
                                 </td>
 
-                                <td v-if="admin" class="rounded-r-xl px-4 py-3">
+                                <!-- ACCIONES -->
+                                <td v-if="admin" class="rounded-r-2xl px-4 py-4">
                                     <div class="flex justify-end gap-2">
                                         <button @click="editPieza(pieza)"
-                                            class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-white">
-                                            Editar
+                                            class="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:scale-105 hover:bg-amber-100"
+                                            title="Editar pieza">
+                                            <Pencil class="h-4 w-4" />
                                         </button>
 
                                         <button @click="removePieza(pieza)"
-                                            class="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-red-700">
-                                            Eliminar
+                                            class="flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-700 transition hover:scale-105 hover:bg-red-100"
+                                            title="Eliminar pieza">
+                                            <Trash2 class="h-4 w-4" />
                                         </button>
                                     </div>
                                 </td>
                             </tr>
 
                             <tr v-if="piezasFiltradas.length === 0">
-                                <td :colspan="admin ? 8 : 7" class="px-4 py-6 text-center text-sm text-slate-500">
+                                <td :colspan="admin ? 8 : 7"
+                                    class="rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                                     No hay piezas registradas.
                                 </td>
                             </tr>

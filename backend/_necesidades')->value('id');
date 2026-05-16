@@ -1,0 +1,24 @@
+[90m= [39m[34;4mIlluminate\Support\Collection[39;24m {#6127
+    [34mall[39m: [
+      "[32mcache[39m",
+      "[32mcache_locks[39m",
+      "[32mclientes[39m",
+      "[32mdetalle_pedidos[39m",
+      "[32mentregas[39m",
+      "[32mfabricaciones[39m",
+      "[32mfailed_jobs[39m",
+      "[32mjob_batches[39m",
+      "[32mjobs[39m",
+      "[32mmigrations[39m",
+      "[32mmodelos[39m",
+      "[32mmoldes[39m",
+      "[32mpassword_reset_tokens[39m",
+      "[32mpedidos[39m",
+      "[32mpiezas[39m",
+      "[32mprograma_detalles[39m",
+      "[32mprogramas_necesidades[39m",
+      "[32msessions[39m",
+      "[32musers[39m",
+    ],
+  }
+
