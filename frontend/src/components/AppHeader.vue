@@ -2,20 +2,37 @@
 // IMPORTS
 import { computed } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { Bell, Search, CalendarDays, Menu } from "lucide-vue-next"
-import { getCurrentUser, logout } from "../utils/auth"
+
+import {
+    Bell,
+    Search,
+    CalendarDays,
+    Menu,
+} from "lucide-vue-next"
+
+import {
+    getCurrentUser,
+    logout,
+} from "../utils/auth"
+
 
 // PROPS
 defineProps({
     sidebarCollapsed: Boolean,
 })
 
+
 // EVENTOS
-const emit = defineEmits(["toggleSidebar"])
+const emit = defineEmits([
+    "toggleSidebar",
+])
+
 
 const router = useRouter()
 const route = useRoute()
+
 const user = getCurrentUser()
+
 
 // TÍTULO DE PÁGINA
 const pageTitle = computed(() => {
@@ -29,10 +46,13 @@ const pageTitle = computed(() => {
         "/produccion": "Producción",
         "/pedidos": "Pedidos",
         "/situacion": "Situación",
+        "/movimientos": "Movimientos",
+        "/usuarios": "Usuarios",
     }
 
     return map[route.path] || "ISAVEX"
 })
+
 
 // FECHA ACTUAL
 const today = new Date().toLocaleDateString("es-ES", {
@@ -41,9 +61,11 @@ const today = new Date().toLocaleDateString("es-ES", {
     month: "short",
 })
 
+
 // CERRAR SESIÓN
 function cerrarSesion() {
     logout()
+
     router.push("/login")
 }
 </script>
@@ -61,13 +83,14 @@ function cerrarSesion() {
                     <Menu class="h-5 w-5" />
                 </button>
 
-                <!-- TÍTULO DE LA PÁGINA -->
-                <div class="hidden md:block">
-                    <p class="text-xs font-semibold uppercase leading-4 tracking-[0.24em] text-[#1597A8]">
+                <!-- TÍTULO -->
+                <div class="min-w-0">
+                    <p
+                        class="hidden text-xs font-semibold uppercase leading-4 tracking-[0.24em] text-[#1597A8] md:block">
                         Panel ISAVEX
                     </p>
 
-                    <h1 class="text-xl font-bold leading-6 tracking-tight text-[#081426]">
+                    <h1 class="truncate text-lg font-bold leading-6 tracking-tight text-[#081426] md:text-xl">
                         {{ pageTitle }}
                     </h1>
                 </div>
@@ -88,7 +111,10 @@ function cerrarSesion() {
                 <div
                     class="hidden items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 text-sm text-slate-600 shadow-md shadow-slate-200/60 md:flex">
                     <CalendarDays class="h-4 w-4 text-[#1597A8]" />
-                    <span class="capitalize">{{ today }}</span>
+
+                    <span class="capitalize">
+                        {{ today }}
+                    </span>
                 </div>
 
                 <!-- NOTIFICACIONES -->
@@ -110,13 +136,13 @@ function cerrarSesion() {
                         {{ user?.name?.charAt(0) || "U" }}
                     </div>
 
-                    <!-- DATOS USUARIO -->
+                    <!-- DATOS -->
                     <div class="hidden text-left sm:block">
                         <p class="text-sm font-semibold leading-5 text-slate-800">
                             {{ user?.name || "Usuario" }}
                         </p>
 
-                        <p class="text-xs leading-4 text-slate-500">
+                        <p class="text-xs capitalize leading-4 text-slate-500">
                             {{ user?.role || "sin rol" }}
                         </p>
                     </div>

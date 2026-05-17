@@ -17,6 +17,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FabricacionController;
 use App\Http\Controllers\EntregaController;
 use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\UserController;
 
 
 /*
@@ -104,3 +105,10 @@ Route::apiResource('entregas', EntregaController::class);
 // PLANNING SEMANAL INDUSTRIAL
 // Vista principal de planificación tipo Excel industrial.
 Route::get('/planning/semanal', [PlanningController::class, 'semanal']);
+
+// USUARIOS
+// Solo administradores
+Route::middleware('admin')->group(function () {
+
+    Route::apiResource('users', UserController::class);
+});
