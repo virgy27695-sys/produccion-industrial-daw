@@ -6,17 +6,46 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * APLICAR MIGRACIÓN
+     */
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('role')->default('operario');
+
+            // Evita crear la columna dos veces
+            if (!Schema::hasColumn('users', 'role')) {
+
+                /*
+                 * ROLES DEL SISTEMA
+                 *
+                 * admin
+                 * planificador
+                 * encargado
+                 * almacen
+                 *
+                 * encargado queda por defecto
+                 * como usuario operativo base.
+                 */
+
+                $table->string('role')
+                    ->default('encargado')
+                    ->after('password');
+            }
         });
     }
 
+
+    /**
+     * REVERTIR MIGRACIÓN
+     */
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('role');
+
+            if (Schema::hasColumn('users', 'role')) {
+                $table->dropColumn('role');
+            }
         });
     }
 };

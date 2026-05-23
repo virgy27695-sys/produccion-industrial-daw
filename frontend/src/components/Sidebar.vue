@@ -14,9 +14,15 @@ import {
   ShoppingCart,
   Activity,
   ShieldCheck,
+  FileText,
 } from "lucide-vue-next"
 
-import { isAdmin } from "../utils/auth"
+import {
+  isAdmin,
+  isPlanificador,
+  isEncargado,
+  isAlmacen,
+} from "../utils/auth"
 
 
 // PROPS
@@ -26,23 +32,88 @@ defineProps({
 
 
 const route = useRoute()
+
 const admin = isAdmin()
+const planificador = isPlanificador()
+const encargado = isEncargado()
+const almacen = isAlmacen()
 
 
-// ELEMENTOS DEL MENÚ
+// ELEMENTOS DEL MENÚ POR ROL
 const items = computed(() => {
   const baseItems = [
-    { name: "Dashboard", icon: LayoutDashboard, to: "/" },
-    { name: "Clientes", icon: Users, to: "/clientes" },
-    { name: "Modelos", icon: Boxes, to: "/modelos" },
-    { name: "Piezas", icon: Box, to: "/piezas" },
-    { name: "Moldes", icon: Wrench, to: "/moldes" },
-    { name: "Programas", icon: ClipboardList, to: "/programas" },
-    { name: "Producción", icon: Factory, to: "/produccion" },
-    { name: "Pedidos", icon: ShoppingCart, to: "/pedidos" },
-    { name: "Situación", icon: Activity, to: "/situacion" },
+    {
+      name: "Dashboard",
+      icon: LayoutDashboard,
+      to: "/",
+    },
   ]
 
+  // PLANIFICADOR / ADMIN
+  if (planificador || admin) {
+    baseItems.push(
+      {
+        name: "Clientes",
+        icon: Users,
+        to: "/clientes",
+      },
+      {
+        name: "Modelos",
+        icon: Boxes,
+        to: "/modelos",
+      },
+      {
+        name: "Piezas",
+        icon: Box,
+        to: "/piezas",
+      },
+      {
+        name: "Moldes",
+        icon: Wrench,
+        to: "/moldes",
+      },
+      {
+        name: "Programas",
+        icon: ClipboardList,
+        to: "/programas",
+      },
+      {
+        name: "Producción",
+        icon: Factory,
+        to: "/produccion",
+      },
+      {
+        name: "Pedidos",
+        icon: ShoppingCart,
+        to: "/pedidos",
+      },
+      {
+        name: "Situación",
+        icon: Activity,
+        to: "/situacion",
+      }
+    )
+  }
+
+  // ENCARGADO / PLANIFICADOR / ADMIN
+  if (encargado || planificador || admin) {
+    baseItems.push({
+      name: "Partes",
+      icon: FileText,
+      to: "/partes-produccion",
+    })
+  }
+
+  // ALMACÉN / PLANIFICADOR / ADMIN
+  if (almacen || planificador || admin) {
+    baseItems.push({
+      name: "Movimientos",
+      icon: Activity,
+      to: "/movimientos",
+    })
+  }
+
+  // ADMIN
   if (admin) {
     baseItems.push({
       name: "Usuarios",
@@ -116,6 +187,7 @@ function isActive(path) {
       <div v-if="!collapsed" class="rounded-2xl border border-[#59C7D8]/25 bg-white/75 p-4 shadow-sm backdrop-blur-xl">
         <div class="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#1597A8]">
           <div class="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_12px_#59C7D8]" />
+
           Sistema activo
         </div>
 

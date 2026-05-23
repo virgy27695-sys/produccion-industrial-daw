@@ -8,17 +8,23 @@ use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
-    // LISTAR USUARIOS
+    /**
+     * LISTAR USUARIOS
+     */
     public function index()
     {
-        return User::orderBy('name')->get();
+        return User::orderBy('name')
+            ->get();
     }
 
 
-    // CREAR USUARIO
+    /**
+     * CREAR USUARIO
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
+
             'name' => [
                 'required',
                 'string',
@@ -35,6 +41,7 @@ class UserController extends Controller
             'password' => [
                 'required',
                 'confirmed',
+
                 Password::min(8)
                     ->mixedCase()
                     ->numbers()
@@ -43,27 +50,41 @@ class UserController extends Controller
 
             'role' => [
                 'required',
-                'in:admin,usuario',
+                'in:admin,planificador,encargado,almacen',
             ],
         ]);
 
-        $user = User::create($data);
+        $user = User::create(
+            $data
+        );
 
-        return response()->json($user, 201);
+        return response()->json(
+            $user,
+            201
+        );
     }
 
 
-    // MOSTRAR USUARIO
-    public function show(User $user)
-    {
+    /**
+     * MOSTRAR USUARIO
+     */
+    public function show(
+        User $user
+    ) {
         return $user;
     }
 
 
-    // ACTUALIZAR USUARIO
-    public function update(Request $request, User $user)
-    {
+    /**
+     * ACTUALIZAR USUARIO
+     */
+    public function update(
+        Request $request,
+        User $user
+    ) {
+
         $data = $request->validate([
+
             'name' => [
                 'required',
                 'string',
@@ -80,6 +101,7 @@ class UserController extends Controller
             'password' => [
                 'nullable',
                 'confirmed',
+
                 Password::min(8)
                     ->mixedCase()
                     ->numbers()
@@ -88,29 +110,54 @@ class UserController extends Controller
 
             'role' => [
                 'required',
-                'in:admin,usuario',
+                'in:admin,planificador,encargado,almacen',
             ],
         ]);
 
-        // Si no se introduce contraseña nueva,
-        // mantenemos la anterior.
-        if (empty($data['password'])) {
-            unset($data['password']);
+
+        // SI NO SE MODIFICA PASSWORD
+        if (
+            empty($data['password'])
+        ) {
+            unset(
+                $data['password']
+            );
         }
 
-        $user->update($data);
 
-        return response()->json($user);
+        $user->update(
+            $data
+        );
+
+        return response()->json(
+            $user
+        );
     }
 
 
-    // ELIMINAR USUARIO
-    public function destroy(User $user)
-    {
+    /**
+     * ELIMINAR USUARIO
+     */
+    public function destroy(
+        User $user
+    ) {
+
+        // EVITAR BORRARSE A SÍ MISMO
+        if (
+            auth()->id() === $user->id
+        ) {
+
+            return response()->json([
+                'message' =>
+                'No puedes eliminar tu propio usuario',
+            ], 422);
+        }
+
         $user->delete();
 
         return response()->json([
-            'message' => 'Usuario eliminado correctamente',
+            'message' =>
+            'Usuario eliminado correctamente',
         ]);
     }
 }

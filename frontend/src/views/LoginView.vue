@@ -18,7 +18,11 @@ const errors = ref({
 })
 
 function validateForm() {
-    errors.value = { email: "", password: "", general: "" }
+    errors.value = {
+        email: "",
+        password: "",
+        general: "",
+    }
 
     let valid = true
 
@@ -48,13 +52,25 @@ async function submit() {
         })
 
         const user = res.user
+        const token = res.token
+
+        if (!user || !token) {
+            errors.value.general = "No se pudo iniciar sesión correctamente."
+            return
+        }
 
         if (remember.value) {
             localStorage.setItem("user", JSON.stringify(user))
+            localStorage.setItem("token", token)
+
             sessionStorage.removeItem("user")
+            sessionStorage.removeItem("token")
         } else {
             sessionStorage.setItem("user", JSON.stringify(user))
+            sessionStorage.setItem("token", token)
+
             localStorage.removeItem("user")
+            localStorage.removeItem("token")
         }
 
         router.push("/")
@@ -180,7 +196,9 @@ async function submit() {
                                 <input v-model="remember" type="checkbox"
                                     class="h-4 w-4 rounded border-slate-300 text-[#59C7D8] focus:ring-[#59C7D8]" />
 
-                                <span class="text-sm text-slate-600">Recuérdame</span>
+                                <span class="text-sm text-slate-600">
+                                    Recuérdame
+                                </span>
                             </label>
 
                             <button type="button"

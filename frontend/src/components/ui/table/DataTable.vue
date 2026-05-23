@@ -1,7 +1,7 @@
-<!-- src/components/ui/table/DataTable.vue -->
-
 <script setup>
-// PROPS
+import TableLoading from "./TableLoading.vue"
+import TableEmpty from "./TableEmpty.vue"
+
 defineProps({
     loading: Boolean,
 
@@ -22,22 +22,16 @@ defineProps({
         default: "No hay registros disponibles.",
     },
 })
-
-
-// COMPONENTES
-import TableLoading from "./TableLoading.vue"
-import TableEmpty from "./TableEmpty.vue"
 </script>
 
 <template>
-    <!-- LOADING -->
+
     <TableLoading v-if="loading" :text="loadingText" />
 
-    <!-- EMPTY -->
     <TableEmpty v-else-if="empty" :title="emptyTitle" :description="emptyDescription" />
 
-    <!-- TABLA -->
-    <div v-else class="overflow-x-auto">
+    <div v-else class="overflow-x-auto rounded-3xl">
         <slot />
     </div>
+
 </template>

@@ -13,69 +13,125 @@ import ProduccionView from '../views/ProduccionView.vue'
 import SituacionView from '../views/SituacionView.vue'
 import MovimientosView from '../views/MovimientosView.vue'
 import UsuariosView from '../views/UsuariosView.vue'
+import PartesProduccionView from '../views/PartesProduccionView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
+
   routes: [
     {
       path: '/login',
       component: LoginView,
-      meta: { hideLayout: true },
+      meta: {
+        hideLayout: true,
+      },
     },
+
     {
       path: '/',
       component: Dashboard,
-      meta: { requiresAuth: true },
+      meta: {
+        requiresAuth: true,
+      },
     },
+
     {
       path: '/clientes',
       component: ClientesView,
-      meta: { requiresAuth: true, role: 'admin' },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador'],
+      },
     },
+
     {
       path: '/modelos',
       component: ModelosView,
-      meta: { requiresAuth: true, role: 'admin' },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador'],
+      },
     },
+
     {
       path: '/piezas',
       component: PiezasView,
-      meta: { requiresAuth: true },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador'],
+      },
     },
+
     {
       path: '/moldes',
       component: MoldesView,
-      meta: { requiresAuth: true },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador'],
+      },
     },
+
     {
       path: '/programas',
       component: ProgramasView,
-      meta: { requiresAuth: true },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador'],
+      },
     },
+
     {
       path: '/pedidos',
       component: PedidosView,
-      meta: { requiresAuth: true },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador', 'almacen'],
+      },
     },
+
     {
       path: '/produccion',
       component: ProduccionView,
-      meta: { requiresAuth: true },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador', 'encargado'],
+      },
     },
+
     {
       path: '/situacion',
       component: SituacionView,
-      meta: { requiresAuth: true },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador', 'encargado', 'almacen'],
+      },
     },
+
     {
       path: '/movimientos',
       component: MovimientosView,
-      meta: { requiresAuth: true },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador', 'almacen'],
+      },
     },
+
     {
       path: '/usuarios',
       component: UsuariosView,
-      meta: { requiresAuth: true, role: 'admin' },
+      meta: {
+        requiresAuth: true,
+        roles: ['admin'],
+      },
+    },
+
+    {
+      path: '/partes-produccion',
+      component: PartesProduccionView,
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador', 'encargado'],
+      },
     },
   ],
 })
@@ -88,7 +144,7 @@ router.beforeEach((to) => {
     return '/login'
   }
 
-  if (to.meta.role && user?.role !== to.meta.role) {
+  if (to.meta.roles && !to.meta.roles.includes(user?.role)) {
     return '/'
   }
 

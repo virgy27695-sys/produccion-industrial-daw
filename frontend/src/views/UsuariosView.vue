@@ -65,7 +65,7 @@ const form = ref({
     email: "",
     password: "",
     password_confirmation: "",
-    role: "usuario",
+    role: "encargado",
 })
 
 
@@ -109,9 +109,8 @@ function resetForm() {
         email: "",
         password: "",
         password_confirmation: "",
-        role: "usuario",
+        role: "encargado",
     }
-
     clearErrors()
 }
 

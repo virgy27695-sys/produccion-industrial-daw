@@ -14,7 +14,11 @@ async function request(endpoint, options = {}) {
         'Content-Type': 'application/json',
         Accept: 'application/json',
 
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {}),
 
         ...(options.headers || {}),
       },
@@ -59,6 +63,14 @@ export function apiPost(endpoint, body) {
 export function apiPut(endpoint, body) {
   return request(endpoint, {
     method: 'PUT',
+    body: JSON.stringify(body),
+  })
+}
+
+// PATCH
+export function apiPatch(endpoint, body = {}) {
+  return request(endpoint, {
+    method: 'PATCH',
     body: JSON.stringify(body),
   })
 }

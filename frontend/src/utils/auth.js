@@ -26,11 +26,38 @@ export function getCurrentUser() {
   return user ? JSON.parse(user) : null
 }
 
-// COMPROBAR SI ES ADMIN
-export function isAdmin() {
+// OBTENER ROL
+export function getRole() {
   const user = getCurrentUser()
 
-  return user?.role === 'admin'
+  return user?.role || null
+}
+
+// COMPROBAR ROLES
+export function hasRole(roles = []) {
+  const role = getRole()
+
+  return roles.includes(role)
+}
+
+export function isAdmin() {
+  return hasRole(['admin'])
+}
+
+export function isPlanificador() {
+  return hasRole(['planificador'])
+}
+
+export function isEncargado() {
+  return hasRole(['encargado'])
+}
+
+export function isAlmacen() {
+  return hasRole(['almacen'])
+}
+
+export function canValidateProduction() {
+  return hasRole(['admin', 'planificador'])
 }
 
 // CERRAR SESIÓN

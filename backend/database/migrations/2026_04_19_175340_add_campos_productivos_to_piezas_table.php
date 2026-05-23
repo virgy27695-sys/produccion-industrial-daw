@@ -10,16 +10,13 @@ return new class extends Migration
     {
         Schema::table('piezas', function (Blueprint $table) {
             $table->enum('lado_pieza', ['izquierda', 'derecha', 'neutra'])
-                ->nullable()
-                ->after('molde_id');
+                ->nullable();
 
             $table->string('mercado', 20)
-                ->nullable()
-                ->after('lado_pieza');
+                ->nullable();
 
             $table->string('categoria_funcional', 50)
-                ->nullable()
-                ->after('mercado');
+                ->nullable();
         });
     }
 

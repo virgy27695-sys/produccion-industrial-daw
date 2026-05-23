@@ -3,112 +3,166 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// IMPORTACIÓN DE CONTROLADORES
-use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\ModeloController;
-use App\Http\Controllers\PiezaController;
-use App\Http\Controllers\MoldeController;
-use App\Http\Controllers\ProgramaNecesidadController;
-use App\Http\Controllers\ProgramaDetalleController;
-use App\Http\Controllers\PedidoController;
-use App\Http\Controllers\ProduccionController;
-use App\Http\Controllers\SituacionController;
+// CONTROLADORES
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\FabricacionController;
+use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EntregaController;
+use App\Http\Controllers\FabricacionController;
+use App\Http\Controllers\MoldeController;
+use App\Http\Controllers\ModeloController;
+use App\Http\Controllers\ParteProduccionController;
+use App\Http\Controllers\PedidoController;
+use App\Http\Controllers\PiezaController;
 use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\ProduccionController;
+use App\Http\Controllers\ProgramaDetalleController;
+use App\Http\Controllers\ProgramaNecesidadController;
+use App\Http\Controllers\SituacionController;
 use App\Http\Controllers\UserController;
 
 
-/*
-|--------------------------------------------------------------------------
-| API ROUTES
-|--------------------------------------------------------------------------
-| Aquí se definen todas las rutas de la API del sistema.
-| Cada recurso sigue una estructura REST (index, store, show, update, destroy).
-|--------------------------------------------------------------------------
-*/
+// LOGIN
+Route::post('/login', [
+    AuthController::class,
+    'login',
+]);
 
 
-// AUTENTICACIÓN
-// Rutas usadas por el frontend para iniciar y cerrar sesión.
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/logout', [AuthController::class, 'logout']);
+// RUTAS PROTEGIDAS
+Route::middleware('auth:sanctum')->group(function () {
 
-// CLIENTES
-// Gestión de clientes del sistema
-Route::apiResource('clientes', ClienteController::class);
-
-
-// MODELOS
-// Cada modelo pertenece a un cliente
-Route::apiResource('modelos', ModeloController::class);
+    // LOGOUT
+    Route::post('/logout', [
+        AuthController::class,
+        'logout',
+    ]);
 
 
-// PIEZAS
-// Piezas fabricadas asociadas a modelos y moldes
-Route::apiResource('piezas', PiezaController::class);
+    // USUARIO ACTUAL
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
 
 
-// MOLDES
-// Moldes de producción (clave en entorno industrial)
-Route::apiResource('moldes', MoldeController::class);
+    // DASHBOARD GENERAL
+    Route::middleware(
+        'role:encargado,planificador,almacen,admin'
+    )->get(
+        '/dashboard/resumen',
+        [DashboardController::class, 'resumen']
+    );
 
 
-// PROGRAMAS DE NECESIDADES
-// Programas enviados por clientes con necesidades semanales
-Route::apiResource('programas', ProgramaNecesidadController::class);
+    // ENCARGADO / PLANIFICADOR / ADMIN
+    Route::middleware(
+        'role:encargado,planificador,admin'
+    )->group(function () {
+
+        Route::patch(
+            '/partes-produccion/{partes_produccion}/validar',
+            [ParteProduccionController::class, 'validar']
+        );
+
+        Route::patch(
+            '/partes-produccion/{partes_produccion}/corregir',
+            [ParteProduccionController::class, 'corregir']
+        );
+
+        Route::apiResource(
+            'partes-produccion',
+            ParteProduccionController::class
+        );
+
+        Route::apiResource(
+            'fabricaciones',
+            FabricacionController::class
+        );
+
+        Route::apiResource(
+            'piezas',
+            PiezaController::class
+        );
+
+        Route::apiResource(
+            'moldes',
+            MoldeController::class
+        );
+    });
 
 
-// DETALLE DE PROGRAMAS
-// Líneas de cada programa (pieza, semana, cantidad)
-Route::apiResource('programa-detalles', ProgramaDetalleController::class);
+    // PLANIFICADOR / ADMIN
+    Route::middleware(
+        'role:planificador,admin'
+    )->group(function () {
+
+        Route::apiResource(
+            'clientes',
+            ClienteController::class
+        );
+
+        Route::apiResource(
+            'modelos',
+            ModeloController::class
+        );
+
+        Route::apiResource(
+            'programas',
+            ProgramaNecesidadController::class
+        );
+
+        Route::apiResource(
+            'programa-detalles',
+            ProgramaDetalleController::class
+        );
+
+        Route::apiResource(
+            'pedidos',
+            PedidoController::class
+        );
+
+        Route::get(
+            '/produccion/resumen',
+            [ProduccionController::class, 'resumen']
+        );
+
+        Route::get(
+            '/situacion',
+            [SituacionController::class, 'resumen']
+        );
+
+        Route::get(
+            '/planning/semanal',
+            [PlanningController::class, 'semanal']
+        );
+
+        Route::post(
+            '/programas/{id}/importar',
+            [ProgramaNecesidadController::class, 'importar']
+        );
+    });
 
 
-// PEDIDOS
-// Pedidos generados a partir de programas
-Route::apiResource('pedidos', PedidoController::class);
+    // ALMACÉN / PLANIFICADOR / ADMIN
+    Route::middleware(
+        'role:almacen,planificador,admin'
+    )->group(function () {
+
+        Route::apiResource(
+            'entregas',
+            EntregaController::class
+        );
+    });
 
 
-// PRODUCCIÓN
-// Endpoint de planificación industrial
-// Agrupa necesidades por molde y semana
-// Devuelve carga de producción real
-Route::get('/produccion/resumen', [ProduccionController::class, 'resumen']);
+    // ADMINISTRADOR
+    Route::middleware(
+        'role:admin'
+    )->group(function () {
 
-
-
-// USUARIO AUTENTICADO 
-// Devuelve datos del usuario autenticado
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
-
-// SITUACIÓN REAL DE PRODUCCIÓN
-// Endpoint para obtener resumen de situación real por pieza
-// Incluye necesidades, producción, entregas, stock y estado
-Route::get('/situacion', [SituacionController::class, 'resumen']);
-
-// IMPORTACIÓN DE EXCEL DE PROGRAMAS
-// Actualiza el detalle semanal de un programa existente.
-Route::post('/programas/{id}/importar', [ProgramaNecesidadController::class, 'importar']);
-
-// FABRICACIONES
-// Registros de producción real por pieza.
-Route::apiResource('fabricaciones', FabricacionController::class);
-
-
-// ENTREGAS
-// Registros de entregas reales al cliente por pieza.
-Route::apiResource('entregas', EntregaController::class);
-
-// PLANNING SEMANAL INDUSTRIAL
-// Vista principal de planificación tipo Excel industrial.
-Route::get('/planning/semanal', [PlanningController::class, 'semanal']);
-
-// USUARIOS
-// Solo administradores
-Route::middleware('admin')->group(function () {
-
-    Route::apiResource('users', UserController::class);
+        Route::apiResource(
+            'users',
+            UserController::class
+        );
+    });
 });

@@ -1,9 +1,9 @@
-import { apiPost } from "./http"
+import { apiPost } from './http'
 
 export function login(data) {
-  return apiPost("/login", data)
+  return apiPost('/login', data)
 }
 
-export function logout() {
-  return apiPost("/logout")
+export function logoutApi() {
+  return apiPost('/logout', {})
 }

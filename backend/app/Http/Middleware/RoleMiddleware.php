@@ -6,26 +6,24 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class AdminMiddleware
+class RoleMiddleware
 {
-    /**
-     * HANDLE
-     */
-    public function handle(Request $request, Closure $next): Response
-    {
+    public function handle(
+        Request $request,
+        Closure $next,
+        string ...$roles
+    ): Response {
         $user = $request->user();
 
-        // NO AUTENTICADO
         if (!$user) {
             return response()->json([
                 'message' => 'No autenticado',
             ], 401);
         }
 
-        // NO ADMIN
-        if ($user->role !== 'admin') {
+        if (!in_array($user->role, $roles, true)) {
             return response()->json([
-                'message' => 'Acceso denegado',
+                'message' => 'No tienes permisos para acceder a este recurso',
             ], 403);
         }
 
