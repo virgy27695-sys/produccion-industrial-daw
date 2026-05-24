@@ -1,462 +1,304 @@
 <script setup>
-// IMPORTS
 import { computed, onMounted, ref } from "vue"
+import { useHead } from "@vueuse/head"
+
+import {
+    Boxes,
+    AlertTriangle,
+    PackageCheck,
+} from "lucide-vue-next"
 
 import { apiGet } from "../api/http"
 
-import {
-    getFabricaciones,
-    createFabricacion,
-} from "../api/fabricaciones"
-
-import {
-    getEntregas,
-    createEntrega,
-} from "../api/entregas"
-
-
-// ESTADO REACTIVO
-const piezas = ref([])          // Piezas disponibles
-const moldes = ref([])          // Moldes disponibles
-
-const fabricaciones = ref([])   // Registros de fabricación
-const entregas = ref([])        // Registros de entregas
-
-const loading = ref(false)      // Control de carga
-const saving = ref(false)       // Control de guardado
-
-const error = ref("")           // Mensaje de error
-const success = ref("")         // Mensaje de éxito
-
-
-// FORMULARIO FABRICACIÓN
-// Registra producción real por pieza, molde y turno.
-const fabricacionForm = ref({
-    pieza_id: "",
-    molde_id: "",
-    fecha: "",
-    turno: "mañana",
-    anio: new Date().getFullYear(),
-    semana: 1,
-    cantidad: 1,
-    observaciones: "",
+useHead({
+    title: "Stock · ISAVEX",
 })
 
+const loading = ref(false)
+const error = ref("")
 
-// FORMULARIO ENTREGA
-// Registra entregas reales al cliente.
-const entregaForm = ref({
-    pieza_id: "",
-    fecha: "",
-    anio: new Date().getFullYear(),
-    semana: 1,
-    cantidad: 1,
-})
+const piezas = ref([])
 
-
-// CARGAR DATOS
-// Se usa Promise.all para cargar datos en paralelo.
 async function loadData() {
+
     loading.value = true
     error.value = ""
 
     try {
-        const [
-            piezasData,
-            moldesData,
-            fabricacionesData,
-            entregasData,
-        ] = await Promise.all([
-            apiGet("/piezas"),
-            apiGet("/moldes"),
-            getFabricaciones(),
-            getEntregas(),
-        ])
 
-        piezas.value = piezasData
-        moldes.value = moldesData
-        fabricaciones.value = fabricacionesData
-        entregas.value = entregasData
-    } catch (e) {
-        error.value = "No se pudieron cargar los movimientos."
-        console.error(e)
+        piezas.value =
+            await apiGet(
+                "/piezas"
+            )
+
+    } catch {
+
+        error.value =
+            "No se pudo cargar el stock."
+
     } finally {
+
         loading.value = false
     }
 }
 
 
-// CREAR FABRICACIÓN
-// Al guardar, se envía la producción real de un turno.
-async function submitFabricacion() {
-    saving.value = true
-    error.value = ""
-    success.value = ""
+const piezasCriticas = computed(() => {
 
-    try {
-        await createFabricacion({
-            ...fabricacionForm.value,
-            molde_id: fabricacionForm.value.molde_id || null,
-            observaciones: fabricacionForm.value.observaciones || null,
-        })
+    return piezas.value.filter(
+        pieza =>
+            Number(
+                pieza.stock || 0
+            ) <
+            Number(
+                pieza.stock_seguridad_dias || 0
+            )
+    )
+})
 
-        success.value = "Fabricación registrada correctamente."
 
-        fabricacionForm.value = {
-            pieza_id: "",
-            molde_id: "",
-            fecha: "",
-            turno: "mañana",
-            anio: new Date().getFullYear(),
-            semana: 1,
-            cantidad: 1,
-            observaciones: "",
-        }
+function estadoStock(
+    pieza
+) {
 
-        await loadData()
-    } catch (e) {
-        error.value = e.message || "No se pudo registrar la fabricación."
-        console.error(e)
-    } finally {
-        saving.value = false
+    const stock =
+        Number(
+            pieza.stock || 0
+        )
+
+    const seguridad =
+        Number(
+            pieza.stock_seguridad_dias || 0
+        )
+
+    if (
+        stock <= seguridad
+    ) {
+        return "Crítico"
     }
+
+    if (
+        stock <=
+        seguridad * 1.5
+    ) {
+        return "Bajo"
+    }
+
+    return "Correcto"
 }
 
 
-// CREAR ENTREGA
-// Registra una entrega realizada al cliente.
-async function submitEntrega() {
-    saving.value = true
-    error.value = ""
-    success.value = ""
+function estadoClass(
+    pieza
+) {
 
-    try {
-        await createEntrega(entregaForm.value)
+    const estado =
+        estadoStock(
+            pieza
+        )
 
-        success.value = "Entrega registrada correctamente."
+    return {
 
-        entregaForm.value = {
-            pieza_id: "",
-            fecha: "",
-            anio: new Date().getFullYear(),
-            semana: 1,
-            cantidad: 1,
-        }
+        "bg-red-100 text-red-700":
+            estado ===
+            "Crítico",
 
-        await loadData()
-    } catch (e) {
-        error.value = e.message || "No se pudo registrar la entrega."
-        console.error(e)
-    } finally {
-        saving.value = false
+        "bg-amber-100 text-amber-700":
+            estado ===
+            "Bajo",
+
+        "bg-green-100 text-green-700":
+            estado ===
+            "Correcto",
     }
 }
 
-
-// ÚLTIMAS FABRICACIONES
-const ultimasFabricaciones = computed(() =>
-    [...fabricaciones.value].slice(0, 10)
+onMounted(
+    loadData
 )
-
-
-// ÚLTIMAS ENTREGAS
-const ultimasEntregas = computed(() =>
-    [...entregas.value].slice(0, 10)
-)
-
-
-// INICIALIZACIÓN
-onMounted(loadData)
 </script>
 
 <template>
+
     <section class="space-y-6">
-        <div>
-            <h2 class="text-2xl font-semibold text-slate-800">
-                Movimientos
-            </h2>
 
-            <p class="text-slate-600">
-                Registro de fabricaciones por turno y entregas reales al cliente.
-            </p>
+        <div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-xl">
+
+            <div class="flex items-center gap-4">
+
+                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700">
+
+                    <Boxes class="h-7 w-7" />
+
+                </div>
+
+                <div>
+
+                    <h1 class="text-3xl font-bold text-[#081426]">
+
+                        Stock y almacén
+
+                    </h1>
+
+                    <p class="mt-1 text-sm text-slate-500">
+
+                        Control de stock y piezas críticas.
+
+                    </p>
+
+                </div>
+
+            </div>
+
         </div>
 
-        <p v-if="error" class="text-sm text-red-600">
-            {{ error }}
-        </p>
 
-        <p v-if="success" class="text-sm text-green-600">
-            {{ success }}
-        </p>
+        <div class="grid gap-4 md:grid-cols-3">
 
-        <p v-if="loading" class="text-sm text-slate-500">
-            Cargando movimientos...
-        </p>
+            <div class="rounded-[2rem] bg-white p-6 shadow">
 
-        <div v-else class="grid gap-6 lg:grid-cols-2">
+                <PackageCheck class="mb-3 h-6 w-6 text-green-700" />
 
-            <!-- FABRICACIÓN -->
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <h3 class="mb-4 text-lg font-semibold text-slate-800">
-                    Registrar fabricación
-                </h3>
+                <p class="text-sm text-slate-400">
 
-                <form class="space-y-4" @submit.prevent="submitFabricacion">
+                    Total piezas
 
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Pieza
-                        </label>
+                </p>
 
-                        <select v-model="fabricacionForm.pieza_id"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2" required>
-                            <option value="">Selecciona una pieza</option>
+                <p class="text-3xl font-bold">
 
-                            <option v-for="pieza in piezas" :key="pieza.id" :value="pieza.id">
-                                {{ pieza.codigo }} - {{ pieza.denominacion }}
-                            </option>
-                        </select>
-                    </div>
+                    {{ piezas.length }}
 
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Molde utilizado
-                        </label>
+                </p>
 
-                        <select v-model="fabricacionForm.molde_id"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2">
-                            <option value="">Sin molde asignado</option>
-
-                            <option v-for="molde in moldes" :key="molde.id" :value="molde.id">
-                                {{ molde.codigo }} - {{ molde.descripcion }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
-                                Fecha
-                            </label>
-
-                            <input v-model="fabricacionForm.fecha" type="date"
-                                class="w-full rounded-xl border border-slate-300 px-4 py-2" required />
-                        </div>
-
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
-                                Turno
-                            </label>
-
-                            <select v-model="fabricacionForm.turno"
-                                class="w-full rounded-xl border border-slate-300 px-4 py-2" required>
-                                <option value="mañana">Mañana</option>
-                                <option value="tarde">Tarde</option>
-                                <option value="noche">Noche</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
-                                Cantidad
-                            </label>
-
-                            <input v-model.number="fabricacionForm.cantidad" type="number" min="1"
-                                class="w-full rounded-xl border border-slate-300 px-4 py-2" required />
-                        </div>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
-                                Año
-                            </label>
-
-                            <input v-model.number="fabricacionForm.anio" type="number"
-                                class="w-full rounded-xl border border-slate-300 px-4 py-2" required />
-                        </div>
-
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
-                                Semana
-                            </label>
-
-                            <input v-model.number="fabricacionForm.semana" type="number" min="1" max="53"
-                                class="w-full rounded-xl border border-slate-300 px-4 py-2" required />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Observaciones
-                        </label>
-
-                        <textarea v-model="fabricacionForm.observaciones" rows="3"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2"
-                            placeholder="Incidencias del turno, cambios de molde, paradas..."></textarea>
-                    </div>
-
-                    <button type="submit" :disabled="saving"
-                        class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-                        {{ saving ? "Guardando..." : "Registrar fabricación" }}
-                    </button>
-                </form>
             </div>
 
 
-            <!-- ENTREGA -->
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <h3 class="mb-4 text-lg font-semibold text-slate-800">
-                    Registrar entrega
-                </h3>
+            <div class="rounded-[2rem] bg-white p-6 shadow">
 
-                <form class="space-y-4" @submit.prevent="submitEntrega">
+                <AlertTriangle class="mb-3 h-6 w-6 text-red-700" />
 
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Pieza
-                        </label>
+                <p class="text-sm text-slate-400">
 
-                        <select v-model="entregaForm.pieza_id"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2" required>
-                            <option value="">Selecciona una pieza</option>
+                    Piezas críticas
 
-                            <option v-for="pieza in piezas" :key="pieza.id" :value="pieza.id">
-                                {{ pieza.codigo }} - {{ pieza.denominacion }}
-                            </option>
-                        </select>
-                    </div>
+                </p>
 
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
-                                Fecha
-                            </label>
+                <p class="text-3xl font-bold">
 
-                            <input v-model="entregaForm.fecha" type="date"
-                                class="w-full rounded-xl border border-slate-300 px-4 py-2" required />
-                        </div>
+                    {{ piezasCriticas.length }}
 
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
-                                Año
-                            </label>
+                </p>
 
-                            <input v-model.number="entregaForm.anio" type="number"
-                                class="w-full rounded-xl border border-slate-300 px-4 py-2" required />
-                        </div>
-
-                        <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
-                                Semana
-                            </label>
-
-                            <input v-model.number="entregaForm.semana" type="number" min="1" max="53"
-                                class="w-full rounded-xl border border-slate-300 px-4 py-2" required />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
-                            Cantidad
-                        </label>
-
-                        <input v-model.number="entregaForm.cantidad" type="number" min="1"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-2" required />
-                    </div>
-
-                    <button type="submit" :disabled="saving"
-                        class="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60">
-                        {{ saving ? "Guardando..." : "Registrar entrega" }}
-                    </button>
-                </form>
             </div>
+
         </div>
 
-        <!-- ÚLTIMOS MOVIMIENTOS -->
-        <div class="grid gap-6 lg:grid-cols-2">
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <h3 class="mb-4 text-lg font-semibold text-slate-800">
-                    Últimas fabricaciones
-                </h3>
 
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead>
-                            <tr class="border-b text-left text-slate-500">
-                                <th class="px-3 py-2">Fecha</th>
-                                <th class="px-3 py-2">Turno</th>
-                                <th class="px-3 py-2">Pieza</th>
-                                <th class="px-3 py-2">Molde</th>
-                                <th class="px-3 py-2">Cantidad</th>
-                            </tr>
-                        </thead>
+        <div class="rounded-[2rem] bg-white shadow overflow-hidden">
 
-                        <tbody>
-                            <tr v-for="fabricacion in ultimasFabricaciones" :key="fabricacion.id" class="border-b">
-                                <td class="px-3 py-2">{{ fabricacion.fecha }}</td>
-                                <td class="px-3 py-2">{{ fabricacion.turno }}</td>
-                                <td class="px-3 py-2">
-                                    {{ fabricacion.pieza?.codigo || "—" }}
-                                </td>
-                                <td class="px-3 py-2">
-                                    {{ fabricacion.molde?.codigo || "—" }}
-                                </td>
-                                <td class="px-3 py-2 font-semibold">
-                                    {{ fabricacion.cantidad }}
-                                </td>
-                            </tr>
+            <div class="border-b px-6 py-4">
 
-                            <tr v-if="ultimasFabricaciones.length === 0">
-                                <td colspan="5" class="px-3 py-4 text-center text-slate-500">
-                                    No hay fabricaciones registradas.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <h2 class="text-xl font-bold">
+
+                    Estado de stock
+
+                </h2>
+
             </div>
 
-            <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <h3 class="mb-4 text-lg font-semibold text-slate-800">
-                    Últimas entregas
-                </h3>
+            <div v-if="loading" class="p-8 text-center text-slate-500">
 
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead>
-                            <tr class="border-b text-left text-slate-500">
-                                <th class="px-3 py-2">Fecha</th>
-                                <th class="px-3 py-2">Pieza</th>
-                                <th class="px-3 py-2">Semana</th>
-                                <th class="px-3 py-2">Cantidad</th>
-                            </tr>
-                        </thead>
+                Cargando stock...
 
-                        <tbody>
-                            <tr v-for="entrega in ultimasEntregas" :key="entrega.id" class="border-b">
-                                <td class="px-3 py-2">{{ entrega.fecha }}</td>
-                                <td class="px-3 py-2">
-                                    {{ entrega.pieza?.codigo || "—" }}
-                                </td>
-                                <td class="px-3 py-2">
-                                    {{ entrega.anio }}-S{{ String(entrega.semana).padStart(2, "0") }}
-                                </td>
-                                <td class="px-3 py-2 font-semibold">
-                                    {{ entrega.cantidad }}
-                                </td>
-                            </tr>
-
-                            <tr v-if="ultimasEntregas.length === 0">
-                                <td colspan="4" class="px-3 py-4 text-center text-slate-500">
-                                    No hay entregas registradas.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
+
+            <div v-else-if="!piezas.length" class="p-8 text-center text-slate-500">
+
+                No hay piezas disponibles.
+
+            </div>
+
+            <div v-else class="overflow-x-auto">
+
+                <table class="w-full text-sm">
+
+                    <thead>
+
+                        <tr class="border-b text-left text-slate-400">
+
+                            <th class="px-4 py-3">
+                                Código
+                            </th>
+
+                            <th class="px-4 py-3">
+                                Descripción
+                            </th>
+
+                            <th class="px-4 py-3">
+                                Stock
+                            </th>
+
+                            <th class="px-4 py-3">
+                                Seguridad
+                            </th>
+
+                            <th class="px-4 py-3">
+                                Estado
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        <tr v-for="pieza in piezas" :key="pieza.id" class="border-b">
+
+                            <td class="px-4 py-4 font-semibold">
+
+                                {{ pieza.codigo }}
+
+                            </td>
+
+                            <td class="px-4 py-4">
+
+                                {{ pieza.denominacion }}
+
+                            </td>
+
+                            <td class="px-4 py-4">
+
+                                {{ pieza.stock || 0 }}
+
+                            </td>
+
+                            <td class="px-4 py-4">
+
+                                {{ pieza.stock_seguridad_dias || 0 }}
+
+                            </td>
+
+                            <td class="px-4 py-4">
+
+                                <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="estadoClass(pieza)">
+
+                                    {{ estadoStock(pieza) }}
+
+                                </span>
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
         </div>
 
     </section>
+
 </template>

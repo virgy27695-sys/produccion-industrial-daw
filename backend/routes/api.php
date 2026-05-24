@@ -45,13 +45,120 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 
-    // DASHBOARD GENERAL
+    // DASHBOARD
     Route::middleware(
-        'role:encargado,planificador,almacen,admin'
+        'role:planificador,almacen,admin'
     )->get(
         '/dashboard/resumen',
         [DashboardController::class, 'resumen']
     );
+
+
+    // PRODUCCIÓN / PLANNING / SITUACIÓN
+    Route::middleware(
+        'role:encargado,planificador,almacen,admin'
+    )->group(function () {
+
+        Route::get(
+            '/produccion/resumen',
+            [ProduccionController::class, 'resumen']
+        );
+
+        Route::get(
+            '/situacion',
+            [SituacionController::class, 'resumen']
+        );
+
+        Route::get(
+            '/planning/semanal',
+            [PlanningController::class, 'semanal']
+        );
+    });
+
+
+    // LECTURA DE MAESTROS
+    // Necesario para combos, pedidos, entregas y stock.
+    Route::middleware(
+        'role:encargado,planificador,almacen,admin'
+    )->group(function () {
+
+        Route::get(
+            '/piezas',
+            [PiezaController::class, 'index']
+        );
+
+        Route::get(
+            '/piezas/{pieza}',
+            [PiezaController::class, 'show']
+        );
+
+        Route::get(
+            '/moldes',
+            [MoldeController::class, 'index']
+        );
+
+        Route::get(
+            '/moldes/{molde}',
+            [MoldeController::class, 'show']
+        );
+    });
+
+
+    // LECTURA PARA ALMACÉN / PLANIFICADOR / ADMIN
+    Route::middleware(
+        'role:almacen,planificador,admin'
+    )->group(function () {
+
+        Route::get(
+            '/clientes',
+            [ClienteController::class, 'index']
+        );
+
+        Route::get(
+            '/clientes/{cliente}',
+            [ClienteController::class, 'show']
+        );
+
+        Route::get(
+            '/modelos',
+            [ModeloController::class, 'index']
+        );
+
+        Route::get(
+            '/modelos/{modelo}',
+            [ModeloController::class, 'show']
+        );
+
+        Route::get(
+            '/programas',
+            [ProgramaNecesidadController::class, 'index']
+        );
+
+        Route::get(
+            '/programas/{programa}',
+            [ProgramaNecesidadController::class, 'show']
+        );
+
+        Route::get(
+            '/programa-detalles',
+            [ProgramaDetalleController::class, 'index']
+        );
+
+        Route::get(
+            '/programa-detalles/{programa_detalle}',
+            [ProgramaDetalleController::class, 'show']
+        );
+
+        Route::get(
+            '/pedidos',
+            [PedidoController::class, 'index']
+        );
+
+        Route::get(
+            '/pedidos/{pedido}',
+            [PedidoController::class, 'show']
+        );
+    });
 
 
     // ENCARGADO / PLANIFICADOR / ADMIN
@@ -78,16 +185,6 @@ Route::middleware('auth:sanctum')->group(function () {
             'fabricaciones',
             FabricacionController::class
         );
-
-        Route::apiResource(
-            'piezas',
-            PiezaController::class
-        );
-
-        Route::apiResource(
-            'moldes',
-            MoldeController::class
-        );
     });
 
 
@@ -99,42 +196,58 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource(
             'clientes',
             ClienteController::class
-        );
+        )->except([
+            'index',
+            'show',
+        ]);
 
         Route::apiResource(
             'modelos',
             ModeloController::class
-        );
+        )->except([
+            'index',
+            'show',
+        ]);
+
+        Route::apiResource(
+            'piezas',
+            PiezaController::class
+        )->except([
+            'index',
+            'show',
+        ]);
+
+        Route::apiResource(
+            'moldes',
+            MoldeController::class
+        )->except([
+            'index',
+            'show',
+        ]);
 
         Route::apiResource(
             'programas',
             ProgramaNecesidadController::class
-        );
+        )->except([
+            'index',
+            'show',
+        ]);
 
         Route::apiResource(
             'programa-detalles',
             ProgramaDetalleController::class
-        );
+        )->except([
+            'index',
+            'show',
+        ]);
 
         Route::apiResource(
             'pedidos',
             PedidoController::class
-        );
-
-        Route::get(
-            '/produccion/resumen',
-            [ProduccionController::class, 'resumen']
-        );
-
-        Route::get(
-            '/situacion',
-            [SituacionController::class, 'resumen']
-        );
-
-        Route::get(
-            '/planning/semanal',
-            [PlanningController::class, 'semanal']
-        );
+        )->except([
+            'index',
+            'show',
+        ]);
 
         Route::post(
             '/programas/{id}/importar',

@@ -22,7 +22,7 @@ import {
 } from "../api/piezas"
 
 import { useToastStore } from "../stores/toast"
-import { isAdmin } from "../utils/auth"
+import { isAdmin, isPlanificador } from "../utils/auth"
 
 // COMPOSABLE CRUD
 import { useCrud } from "../composables/useCrud"
@@ -37,6 +37,8 @@ useHead({
 // ESTADO GENERAL
 const toast = useToastStore()
 const admin = isAdmin()
+const planificador = isPlanificador()
+const canManage = admin || planificador
 
 
 // CRUD GLOBAL
@@ -344,27 +346,26 @@ async function submitForm() {
     } catch (e) {
         formError.value = "No se pudo guardar la pieza."
         toast.show("Error al guardar pieza", "error")
-        console.error(e)
     }
 }
 
 
 // ELIMINAR PIEZA
 async function removePieza(pieza) {
-    const confirmacion = window.confirm(
-        `¿Seguro que quieres eliminar la pieza "${pieza.codigo}"?`
-    )
-
-    if (!confirmacion) return
-
     try {
         await deletePieza(pieza.id)
+
         toast.show("Pieza eliminada")
+
         await loadData()
-    } catch (e) {
+
+    } catch {
         error.value = "No se pudo eliminar la pieza."
-        toast.show("Error al eliminar pieza", "error")
-        console.error(e)
+
+        toast.show(
+            "Error al eliminar pieza",
+            "error"
+        )
     }
 }
 
@@ -443,9 +444,9 @@ onMounted(loadData)
         </div>
 
         <!-- CONTENEDOR PRINCIPAL -->
-        <div class="grid grid-cols-1 gap-6" :class="admin ? 'xl:grid-cols-[420px_1fr]' : 'xl:grid-cols-1'">
+        <div class="grid grid-cols-1 gap-6" :class="canManage ? 'xl:grid-cols-[420px_1fr]' : 'xl:grid-cols-1'">
             <!-- FORMULARIO DE ALTA / EDICIÓN -->
-            <div v-if="admin"
+            <div v-if="canManage"
                 class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-xl shadow-slate-300/30 backdrop-blur-xl">
                 <div class="mb-6">
                     <h3 class="text-xl font-bold text-[#081426]">
@@ -566,7 +567,7 @@ onMounted(loadData)
 
             <!-- LISTADO DE PIEZAS -->
             <div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-xl shadow-slate-300/30 backdrop-blur-xl"
-                :class="admin ? '' : 'xl:col-span-1'">
+                :class="canManage ? '' : 'xl:col-span-1'">
                 <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <h3 class="text-xl font-bold text-[#081426]">Listado de piezas</h3>
@@ -607,7 +608,7 @@ onMounted(loadData)
                                 <th class="px-4 py-2">Lado</th>
                                 <th class="px-4 py-2">Mercado</th>
                                 <th class="px-4 py-2">Categoría</th>
-                                <th v-if="admin" class="px-4 py-2 text-right">Acciones</th>
+                                <th v-if="canManage" class="px-4 py-2 text-right">Acciones</th>
                             </tr>
                         </thead>
 
@@ -641,7 +642,7 @@ onMounted(loadData)
                                     {{ pieza.mercado || "—" }}
                                 </td>
 
-                                <td class="px-4 py-4" :class="!admin ? 'rounded-r-2xl' : ''">
+                                <td class="px-4 py-4" :class="!canManage ? 'rounded-r-2xl' : ''">
                                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1"
                                         :class="badgeClass(pieza.categoria_funcional)">
                                         {{ formatCategoria(pieza.categoria_funcional) }}
@@ -649,7 +650,7 @@ onMounted(loadData)
                                 </td>
 
                                 <!-- ACCIONES -->
-                                <td v-if="admin" class="rounded-r-2xl px-4 py-4">
+                                <td v-if="canManage" class="rounded-r-2xl px-4 py-4">
                                     <div class="flex justify-end gap-2">
                                         <button @click="editPieza(pieza)"
                                             class="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:scale-105 hover:bg-amber-100"
@@ -667,7 +668,7 @@ onMounted(loadData)
                             </tr>
 
                             <tr v-if="piezasFiltradas.length === 0">
-                                <td :colspan="admin ? 8 : 7"
+                                <td :colspan="canManage ? 8 : 7"
                                     class="rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                                     No hay piezas registradas.
                                 </td>

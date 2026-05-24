@@ -76,7 +76,6 @@ async function submit() {
         router.push("/")
     } catch (error) {
         errors.value.general = "Credenciales incorrectas."
-        console.error(error)
     } finally {
         processing.value = false
     }

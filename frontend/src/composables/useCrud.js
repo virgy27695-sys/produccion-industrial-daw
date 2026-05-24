@@ -29,7 +29,6 @@ export function useCrud() {
     try {
       return await callback()
     } catch (e) {
-      console.error(e)
 
       error.value = 'Se produjo un error al cargar los datos.'
 
@@ -50,7 +49,6 @@ export function useCrud() {
     try {
       return await callback()
     } catch (e) {
-      console.error(e)
 
       formError.value = 'Se produjo un error al guardar.'
 

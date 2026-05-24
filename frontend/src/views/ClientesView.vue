@@ -20,7 +20,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog.vue"
 
 // STORES Y UTILS
 import { useToastStore } from "../stores/toast"
-import { isAdmin } from "../utils/auth"
+import { isAdmin, isPlanificador } from "../utils/auth"
 
 // COMPOSABLE CRUD
 import { useCrud } from "../composables/useCrud"
@@ -35,6 +35,8 @@ useHead({
 // ESTADO GENERAL
 const toast = useToastStore()
 const admin = isAdmin()
+const planificador = isPlanificador()
+const canManage = admin || planificador
 
 const clientes = ref([])
 const busqueda = ref("")
@@ -144,7 +146,6 @@ async function submitForm() {
     } catch (e) {
         formError.value = "No se pudo guardar el cliente."
         toast.show("Error al guardar cliente", "error")
-        console.error(e)
     }
 }
 
@@ -178,7 +179,6 @@ async function confirmDeleteCliente() {
     } catch (e) {
         error.value = "No se pudo eliminar el cliente."
         toast.show("Error al eliminar cliente", "error")
-        console.error(e)
     }
 }
 
@@ -232,9 +232,9 @@ onMounted(loadClientes)
         </div>
 
         <!-- GRID PRINCIPAL -->
-        <div class="grid gap-4 md:gap-5" :class="admin ? 'xl:grid-cols-[340px_1fr]' : 'xl:grid-cols-1'">
+        <div class="grid gap-4 md:gap-5" :class="canManage ? 'xl:grid-cols-[340px_1fr]' : 'xl:grid-cols-1'">
             <!-- FORMULARIO -->
-            <div v-if="admin" class="isavex-card p-4 md:p-5">
+            <div v-if="canManage" class="isavex-card p-4 md:p-5">
                 <div class="mb-4">
                     <h3 class="text-xl font-bold text-slate-900 md:text-2xl">
                         {{ isEditing ? "Editar cliente" : "Nuevo cliente" }}
@@ -333,7 +333,7 @@ onMounted(loadClientes)
                                     </div>
                                 </div>
 
-                                <ActionButtons v-if="admin" @edit="editCliente(cliente)"
+                                <ActionButtons v-if="canManage" @edit="editCliente(cliente)"
                                     @delete="askDeleteCliente(cliente)" />
                             </div>
                         </div>
@@ -353,7 +353,7 @@ onMounted(loadClientes)
                                         Cliente
                                     </th>
 
-                                    <th v-if="admin" class="px-4 py-3 text-right font-semibold">
+                                    <th v-if="canManage" class="px-4 py-3 text-right font-semibold">
                                         Acciones
                                     </th>
                                 </tr>
@@ -389,7 +389,7 @@ onMounted(loadClientes)
                                         </div>
                                     </td>
 
-                                    <td v-if="admin" class="px-4 py-4">
+                                    <td v-if="canManage" class="px-4 py-4">
                                         <div class="flex justify-end">
                                             <ActionButtons @edit="editCliente(cliente)"
                                                 @delete="askDeleteCliente(cliente)" />

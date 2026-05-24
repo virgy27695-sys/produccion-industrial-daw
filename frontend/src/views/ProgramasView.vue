@@ -151,10 +151,6 @@ async function loadProgramas() {
         ? programasResult.value
         : []
     } else {
-      console.error(
-        "Error cargando programas:",
-        programasResult.reason
-      )
 
       programas.value = []
 
@@ -219,7 +215,6 @@ async function importarExcel() {
       e.message ||
       "No se pudo importar el programa."
 
-    console.error(e)
   }
 }
 

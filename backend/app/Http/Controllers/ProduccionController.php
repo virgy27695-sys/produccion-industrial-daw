@@ -3,31 +3,41 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProgramaDetalle;
-use Illuminate\Http\Request;
 
 class ProduccionController extends Controller
 {
     /**
      * PLANIFICACIÓN DE PRODUCCIÓN POR MOLDE
      *
-     * Agrupa las necesidades de producción por:
-     * - molde
-     * - año
-     * - semana
+     * Agrupa necesidades por:
+     * - Molde
+     * - Año
+     * - Semana
      *
-     * Calcula:
-     * - total de piezas
-     * - cavidades del molde
-     * - ciclos necesarios (piezas / cavidades)
+     * Devuelve:
+     * - código molde
+     * - referencias asociadas
+     * - cantidad prevista
+     * - cavidades
+     * - ciclos estimados
      */
     public function resumen()
     {
-        // Cargar detalles con relaciones necesarias
-        $detalles = ProgramaDetalle::with('pieza.molde')->get();
+        // Cargar relaciones
+        $detalles = ProgramaDetalle::with([
+            'pieza.molde',
+            'pieza.modelo',
+        ])->get();
 
-        // Agrupar por molde + semana
+        // Agrupar por molde + año + semana
         $agrupado = $detalles->groupBy(function ($item) {
-            return $item->pieza->molde_id . '_' . $item->anio . '_' . $item->semana;
+
+            return
+                $item->pieza->molde_id .
+                '_' .
+                $item->anio .
+                '_' .
+                $item->semana;
         });
 
         $resultado = [];
@@ -36,29 +46,91 @@ class ProduccionController extends Controller
 
             $primer = $grupo->first();
 
-            $molde = $primer->pieza->molde;
+            $molde = $primer->pieza?->molde;
 
-            // Si la pieza no tiene molde, se ignora
-            if (!$molde) continue;
+            // Ignorar piezas sin molde
+            if (!$molde) {
+                continue;
+            }
 
-            $totalPiezas = $grupo->sum('cantidad');
+            // Referencias asociadas al molde
+            $referencias = $grupo
+                ->pluck('pieza.codigo')
+                ->unique()
+                ->implode(' / ');
+
+            // Modelos asociados
+            $modelos = $grupo
+                ->pluck('pieza.modelo.nombre')
+                ->filter()
+                ->unique()
+                ->implode(' / ');
+
+            /*
+             * Para moldes izquierda/derecha:
+             * el molde genera un conjunto por ciclo
+             * así que usamos la mayor cantidad
+             *
+             * Para el resto:
+             * usamos la suma normal
+             */
+
+            if ($molde->tipo_configuracion === 'izquierda_derecha') {
+
+                $cantidadPrevista =
+                    $grupo->max('cantidad');
+            } else {
+
+                $cantidadPrevista =
+                    $grupo->sum('cantidad');
+            }
 
             $cavidades = $molde->cavidades ?: 1;
 
-            // Cálculo de ciclos necesarios
-            $ciclos = ceil($totalPiezas / $cavidades);
+            $ciclos =
+                ceil(
+                    $cantidadPrevista /
+                        $cavidades
+                );
 
             $resultado[] = [
-                'molde_codigo' => $molde->codigo,
-                'descripcion' => $molde->descripcion,
-                'anio' => $primer->anio,
-                'semana' => $primer->semana,
-                'total_piezas' => $totalPiezas,
-                'cavidades' => $cavidades,
-                'ciclos_necesarios' => $ciclos,
+
+                'molde_codigo' =>
+                $molde->codigo,
+
+                'descripcion' =>
+                $molde->descripcion,
+
+                'referencias' =>
+                $referencias,
+
+                'modelo' =>
+                $modelos,
+
+                'anio' =>
+                $primer->anio,
+
+                'semana' =>
+                $primer->semana,
+
+                'cantidad_prevista' =>
+                $cantidadPrevista,
+
+                'cavidades' =>
+                $cavidades,
+
+                'ciclos_necesarios' =>
+                $ciclos,
             ];
         }
 
-        return response()->json($resultado);
+        return response()->json(
+            collect($resultado)
+                ->sortBy([
+                    ['anio', 'asc'],
+                    ['semana', 'asc'],
+                ])
+                ->values()
+        );
     }
 }

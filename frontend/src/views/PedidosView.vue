@@ -1,5 +1,4 @@
 <script setup>
-// IMPORTS
 import { ref, onMounted, computed } from "vue"
 import { useHead } from "@vueuse/head"
 
@@ -18,23 +17,17 @@ import {
 } from "../api/pedidos"
 
 import { apiGet } from "../api/http"
-import { isAdmin } from "../utils/auth"
-
-// COMPOSABLE CRUD
+import { isAdmin, isPlanificador } from "../utils/auth"
 import { useCrud } from "../composables/useCrud"
 
-
-// CONFIGURACIÓN SEO
 useHead({
   title: "Pedidos · ISAVEX",
 })
 
-
-// ROLES
 const admin = isAdmin()
+const planificador = isPlanificador()
+const canManage = admin || planificador
 
-
-// ESTADO PRINCIPAL
 const pedidos = ref([])
 const programas = ref([])
 const piezas = ref([])
@@ -43,8 +36,6 @@ const showForm = ref(false)
 const editingId = ref(null)
 const search = ref("")
 
-
-// CRUD GLOBAL
 const {
   loading,
   saving,
@@ -55,8 +46,6 @@ const {
   clearErrors,
 } = useCrud()
 
-
-// FORMULARIO
 const form = ref({
   programa_id: "",
   fecha_pedido: "",
@@ -69,8 +58,6 @@ const form = ref({
   ],
 })
 
-
-// FILTRADO DE PEDIDOS
 const pedidosFiltrados = computed(() => {
   const term = search.value.toLowerCase().trim()
 
@@ -89,8 +76,6 @@ const pedidosFiltrados = computed(() => {
   })
 })
 
-
-// KPIS
 const totalPedidos = computed(() => pedidos.value.length)
 
 const pedidosProduccion = computed(() =>
@@ -101,10 +86,6 @@ const pedidosEntregados = computed(() =>
   pedidos.value.filter((pedido) => pedido.estado === "entregado").length
 )
 
-
-// CARGA DE DATOS
-// Promise.allSettled evita romper toda la vista
-// si una de las peticiones falla.
 async function loadData() {
   await executeLoad(async () => {
     const results = await Promise.allSettled([
@@ -134,18 +115,12 @@ async function loadData() {
         ? piezasResult.value
         : []
 
-    const hasErrors = results.some(
-      (result) => result.status === "rejected"
-    )
-
-    if (hasErrors) {
+    if (results.some((result) => result.status === "rejected")) {
       error.value = "Algunos datos no pudieron cargarse correctamente."
     }
   })
 }
 
-
-// REINICIAR FORMULARIO
 function resetForm() {
   form.value = {
     programa_id: "",
@@ -162,19 +137,17 @@ function resetForm() {
   clearErrors()
 }
 
-
-// ABRIR MODAL CREACIÓN
 function openCreate() {
-  if (!admin) return
+  if (!canManage) return
 
   editingId.value = null
   resetForm()
   showForm.value = true
 }
 
-
-// ABRIR MODAL EDICIÓN
 function openEdit(pedido) {
+  if (!canManage) return
+
   editingId.value = pedido.id
 
   form.value = {
@@ -191,16 +164,12 @@ function openEdit(pedido) {
   showForm.value = true
 }
 
-
-// CERRAR MODAL
 function closeForm() {
   showForm.value = false
 }
 
-
-// AÑADIR LÍNEA
 function addDetalle() {
-  if (!admin) return
+  if (!canManage) return
 
   form.value.detalles.push({
     pieza_id: "",
@@ -208,18 +177,16 @@ function addDetalle() {
   })
 }
 
-
-// QUITAR LÍNEA
 function removeDetalle(index) {
-  if (!admin) return
+  if (!canManage) return
   if (form.value.detalles.length === 1) return
 
   form.value.detalles.splice(index, 1)
 }
 
-
-// GUARDAR PEDIDO
 async function submitForm() {
+  if (!canManage) return
+
   clearErrors()
 
   if (!form.value.programa_id) {
@@ -240,26 +207,8 @@ async function submitForm() {
   try {
     await executeSave(async () => {
       if (editingId.value) {
-        if (admin) {
-          await updatePedido(editingId.value, form.value)
-        } else {
-          const pedidoOriginal = pedidos.value.find(
-            (pedido) => pedido.id === editingId.value
-          )
-
-          await updatePedido(editingId.value, {
-            programa_id: pedidoOriginal.programa_id,
-            fecha_pedido: pedidoOriginal.fecha_pedido,
-            estado: form.value.estado,
-            detalles: pedidoOriginal.detalles.map((detalle) => ({
-              pieza_id: detalle.pieza_id,
-              cantidad: detalle.cantidad,
-            })),
-          })
-        }
+        await updatePedido(editingId.value, form.value)
       } else {
-        if (!admin) return
-
         await createPedido(form.value)
       }
 
@@ -269,32 +218,20 @@ async function submitForm() {
     })
   } catch (e) {
     formError.value = e.message || "No se pudo guardar el pedido."
-    console.error(e)
   }
 }
 
-
-// ELIMINAR PEDIDO
 async function removePedido(id) {
-  if (!admin) return
-
-  const confirmacion = window.confirm(
-    "¿Seguro que quieres eliminar este pedido?"
-  )
-
-  if (!confirmacion) return
+  if (!canManage) return
 
   try {
     await deletePedido(id)
     await loadData()
   } catch (e) {
     error.value = e.message || "No se pudo eliminar el pedido."
-    console.error(e)
   }
 }
 
-
-// TOTAL DE PIEZAS
 function getTotalPiezas(detalles = []) {
   return detalles.reduce(
     (total, detalle) => total + Number(detalle.cantidad || 0),
@@ -302,8 +239,6 @@ function getTotalPiezas(detalles = []) {
   )
 }
 
-
-// CLASE VISUAL DE ESTADO
 function estadoClass(estado) {
   return {
     "bg-amber-100 text-amber-700 ring-amber-200": estado === "pendiente",
@@ -313,14 +248,11 @@ function estadoClass(estado) {
   }
 }
 
-
-// INICIALIZACIÓN
 onMounted(loadData)
 </script>
 
 <template>
   <section class="space-y-6">
-    <!-- HERO -->
     <div
       class="relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-xl shadow-slate-300/40 backdrop-blur-xl">
       <div class="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#59C7D8]/20 blur-3xl"></div>
@@ -375,7 +307,6 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- TOOLBAR -->
     <div
       class="flex flex-col gap-4 rounded-[1.75rem] border border-white/70 bg-white/75 p-5 shadow-lg shadow-slate-300/30 backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
       <div
@@ -392,20 +323,18 @@ onMounted(loadData)
           {{ pedidosFiltrados.length }} resultados
         </div>
 
-        <button v-if="admin" @click="openCreate"
+        <button v-if="canManage" @click="openCreate"
           class="rounded-2xl bg-[#59C7D8] px-5 py-3 text-sm font-semibold text-[#081426] shadow-lg shadow-cyan-200/60 transition hover:bg-[#49B3C2]">
           Nuevo pedido
         </button>
       </div>
     </div>
 
-    <!-- ERROR -->
     <p v-if="error || formError"
       class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
       {{ error || formError }}
     </p>
 
-    <!-- LISTADO -->
     <div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-xl shadow-slate-300/30 backdrop-blur-xl">
       <p v-if="loading" class="text-sm text-slate-500">
         Cargando pedidos...
@@ -445,7 +374,7 @@ onMounted(loadData)
 
                 <p>
                   <span class="font-semibold text-slate-800">Líneas:</span>
-                  {{ pedido.detalles.length }}
+                  {{ pedido.detalles?.length || 0 }}
                 </p>
 
                 <p>
@@ -460,15 +389,14 @@ onMounted(loadData)
               </div>
             </div>
 
-            <!-- ACCIONES -->
-            <div class="flex flex-wrap gap-2">
+            <div v-if="canManage" class="flex flex-wrap gap-2">
               <button @click="openEdit(pedido)"
                 class="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 transition hover:bg-amber-100"
-                :title="admin ? 'Editar pedido' : 'Cambiar estado'">
+                title="Editar pedido">
                 <Pencil class="h-4 w-4" />
               </button>
 
-              <button v-if="admin" @click="removePedido(pedido.id)"
+              <button @click="removePedido(pedido.id)"
                 class="flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
                 title="Eliminar pedido">
                 <Trash2 class="h-4 w-4" />
@@ -476,7 +404,6 @@ onMounted(loadData)
             </div>
           </div>
 
-          <!-- DETALLES -->
           <div class="mt-5 overflow-x-auto">
             <table class="min-w-full border-separate border-spacing-y-2 text-sm">
               <thead>
@@ -518,7 +445,7 @@ onMounted(loadData)
                   </td>
                 </tr>
 
-                <tr v-if="pedido.detalles.length === 0">
+                <tr v-if="!pedido.detalles?.length">
                   <td colspan="5" class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-slate-500">
                     Este pedido no tiene líneas.
                   </td>
@@ -528,7 +455,6 @@ onMounted(loadData)
           </div>
         </div>
 
-        <!-- VACÍO -->
         <div v-if="pedidosFiltrados.length === 0"
           class="rounded-[1.75rem] border border-dashed border-[#59C7D8]/40 bg-white/60 p-10 text-center text-sm text-slate-500">
           No hay pedidos registrados.
@@ -536,7 +462,6 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- MODAL -->
     <div v-if="showForm"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
       <div
@@ -565,8 +490,10 @@ onMounted(loadData)
                 Programa
               </label>
 
-              <select v-model="form.programa_id" class="isavex-input" :disabled="!admin" required>
-                <option value="">Selecciona un programa</option>
+              <select v-model="form.programa_id" class="isavex-input" required>
+                <option value="">
+                  Selecciona un programa
+                </option>
 
                 <option v-for="programa in programas" :key="programa.id" :value="programa.id">
                   #{{ programa.id }} - {{ programa.cliente?.nombre || "Sin cliente" }}
@@ -579,7 +506,7 @@ onMounted(loadData)
                 Fecha pedido
               </label>
 
-              <input v-model="form.fecha_pedido" type="date" class="isavex-input" :disabled="!admin" />
+              <input v-model="form.fecha_pedido" type="date" class="isavex-input" />
             </div>
 
             <div class="md:col-span-2">
@@ -596,14 +523,13 @@ onMounted(loadData)
             </div>
           </div>
 
-          <!-- LÍNEAS -->
           <div>
             <div class="mb-3 flex items-center justify-between">
               <h4 class="text-lg font-bold text-[#081426]">
                 Líneas del pedido
               </h4>
 
-              <button v-if="admin" type="button" @click="addDetalle"
+              <button type="button" @click="addDetalle"
                 class="rounded-2xl border border-[#59C7D8]/40 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100">
                 <div class="flex items-center gap-2">
                   <Plus class="h-4 w-4" />
@@ -620,8 +546,10 @@ onMounted(loadData)
                     Pieza
                   </label>
 
-                  <select v-model="detalle.pieza_id" class="isavex-input" :disabled="!admin" required>
-                    <option value="">Selecciona una pieza</option>
+                  <select v-model="detalle.pieza_id" class="isavex-input" required>
+                    <option value="">
+                      Selecciona una pieza
+                    </option>
 
                     <option v-for="pieza in piezas" :key="pieza.id" :value="pieza.id">
                       {{ pieza.codigo }} - {{ pieza.denominacion }}
@@ -634,11 +562,10 @@ onMounted(loadData)
                     Cantidad
                   </label>
 
-                  <input v-model.number="detalle.cantidad" type="number" min="1" class="isavex-input" :disabled="!admin"
-                    required />
+                  <input v-model.number="detalle.cantidad" type="number" min="1" class="isavex-input" required />
                 </div>
 
-                <div v-if="admin" class="flex items-end">
+                <div class="flex items-end">
                   <button type="button" @click="removeDetalle(index)"
                     class="flex h-12 w-full items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
                     title="Quitar línea">
@@ -649,7 +576,6 @@ onMounted(loadData)
             </div>
           </div>
 
-          <!-- BOTONES MODAL -->
           <div class="flex justify-end gap-3">
             <button type="button" @click="closeForm"
               class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">

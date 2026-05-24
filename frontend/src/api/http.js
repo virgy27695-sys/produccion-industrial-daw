@@ -40,7 +40,6 @@ async function request(endpoint, options = {}) {
 
     return data
   } catch (error) {
-    console.error('API ERROR:', error.message)
 
     throw error
   }

@@ -1,6 +1,8 @@
 // GUARDAR TOKEN
-export function setToken(token) {
-  localStorage.setItem('token', token)
+export function setToken(token, remember = true) {
+  const storage = remember ? localStorage : sessionStorage
+
+  storage.setItem('token', token)
 }
 
 // OBTENER TOKEN
@@ -8,15 +10,11 @@ export function getToken() {
   return localStorage.getItem('token') || sessionStorage.getItem('token')
 }
 
-// ELIMINAR TOKEN
-export function removeToken() {
-  localStorage.removeItem('token')
-  sessionStorage.removeItem('token')
-}
-
 // GUARDAR USUARIO
-export function setCurrentUser(user) {
-  localStorage.setItem('user', JSON.stringify(user))
+export function setCurrentUser(user, remember = true) {
+  const storage = remember ? localStorage : sessionStorage
+
+  storage.setItem('user', JSON.stringify(user))
 }
 
 // OBTENER USUARIO
@@ -28,42 +26,63 @@ export function getCurrentUser() {
 
 // OBTENER ROL
 export function getRole() {
-  const user = getCurrentUser()
-
-  return user?.role || null
+  return getCurrentUser()?.role || null
 }
 
 // COMPROBAR ROLES
 export function hasRole(roles = []) {
   const role = getRole()
 
-  return roles.includes(role)
+  if (!role) {
+    return false
+  }
+
+  // Permite pasar:
+  // hasRole("admin")
+  // hasRole(["admin","encargado"])
+
+  const rolesArray = Array.isArray(roles) ? roles : [roles]
+
+  return rolesArray.includes(role)
 }
 
+// ADMIN
 export function isAdmin() {
-  return hasRole(['admin'])
+  return hasRole('admin')
 }
 
+// PLANIFICADOR
 export function isPlanificador() {
-  return hasRole(['planificador'])
+  return hasRole('planificador')
 }
 
+// ENCARGADO
 export function isEncargado() {
-  return hasRole(['encargado'])
+  return hasRole('encargado')
 }
 
+// ALMACÉN
 export function isAlmacen() {
-  return hasRole(['almacen'])
+  return hasRole('almacen')
 }
 
+// VALIDACIÓN DE PARTES
 export function canValidateProduction() {
-  return hasRole(['admin', 'planificador'])
+  return hasRole(['admin', 'planificador', 'encargado'])
+}
+
+// ELIMINAR TOKEN
+export function removeToken() {
+  logout()
 }
 
 // CERRAR SESIÓN
 export function logout() {
   localStorage.removeItem('token')
+
   localStorage.removeItem('user')
+
   sessionStorage.removeItem('token')
+
   sessionStorage.removeItem('user')
 }

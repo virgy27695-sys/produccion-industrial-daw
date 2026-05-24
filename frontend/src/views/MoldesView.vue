@@ -106,10 +106,6 @@ async function loadMoldes() {
         ? moldesResult.value
         : []
     } else {
-      console.error(
-        "Error cargando moldes:",
-        moldesResult.reason
-      )
 
       moldes.value = []
 

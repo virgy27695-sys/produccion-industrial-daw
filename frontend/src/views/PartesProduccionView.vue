@@ -83,7 +83,6 @@ async function loadData() {
         moldes.value = Array.isArray(moldesData) ? moldesData : []
     } catch (e) {
         error.value = "No se pudieron cargar los datos."
-        console.error(e)
     } finally {
         loading.value = false
     }
@@ -120,7 +119,6 @@ async function saveParte() {
         await loadData()
     } catch (e) {
         error.value = "No se pudo guardar el parte de producción."
-        console.error(e)
     } finally {
         saving.value = false
     }
@@ -139,22 +137,20 @@ async function updateEstado(parte, estado) {
         await loadData()
     } catch (e) {
         error.value = "No se pudo actualizar el estado."
-        console.error(e)
     }
 }
 
 async function deleteParte(parte) {
-    if (!confirm("¿Eliminar este parte?")) return
-
     try {
         error.value = ""
 
         await deleteParteProduccion(parte.id)
 
         await loadData()
-    } catch (e) {
-        error.value = "No se pudo eliminar el parte."
-        console.error(e)
+
+    } catch {
+        error.value =
+            "No se pudo eliminar el parte."
     }
 }
 

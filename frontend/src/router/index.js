@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { hasRole, getCurrentUser } from '../utils/auth'
+
 // VISTAS
 import Dashboard from '../views/Dashboard.vue'
 import ClientesView from '../views/ClientesView.vue'
@@ -14,6 +16,7 @@ import SituacionView from '../views/SituacionView.vue'
 import MovimientosView from '../views/MovimientosView.vue'
 import UsuariosView from '../views/UsuariosView.vue'
 import PartesProduccionView from '../views/PartesProduccionView.vue'
+import EntregasView from '../views/EntregasView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -32,6 +35,7 @@ const router = createRouter({
       component: Dashboard,
       meta: {
         requiresAuth: true,
+        roles: ['admin', 'planificador', 'almacen'],
       },
     },
 
@@ -90,6 +94,15 @@ const router = createRouter({
     },
 
     {
+      path: '/entregas',
+      component: EntregasView,
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'planificador', 'almacen'],
+      },
+    },
+
+    {
       path: '/produccion',
       component: ProduccionView,
       meta: {
@@ -138,17 +151,33 @@ const router = createRouter({
 
 // GUARD DE AUTENTICACIÓN
 router.beforeEach((to) => {
-  const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null')
+  const user = getCurrentUser()
 
   if (to.meta.requiresAuth && !user) {
     return '/login'
   }
 
-  if (to.meta.roles && !to.meta.roles.includes(user?.role)) {
+  if (to.path === '/login' && user) {
+    if (user.role === 'encargado') {
+      return '/produccion'
+    }
+
     return '/'
   }
 
-  if (to.path === '/login' && user) {
+  if (to.path === '/' && user?.role === 'encargado') {
+    return '/produccion'
+  }
+
+  if (to.meta.roles && !hasRole(to.meta.roles)) {
+    if (user?.role === 'encargado') {
+      return '/produccion'
+    }
+
+    if (user?.role === 'almacen') {
+      return '/'
+    }
+
     return '/'
   }
 

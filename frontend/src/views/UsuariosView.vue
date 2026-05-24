@@ -208,7 +208,6 @@ async function submitForm() {
 
         toast.show("Error al guardar usuario", "error")
 
-        console.error(e)
     }
 }
 
@@ -245,7 +244,6 @@ async function confirmDeleteUser() {
 
         toast.show("Error al eliminar usuario", "error")
 
-        console.error(e)
     }
 }
 
@@ -323,13 +321,23 @@ onMounted(loadUsers)
                         </label>
 
                         <BaseSelect v-model="form.role">
-                            <option value="usuario">
-                                Usuario
-                            </option>
 
                             <option value="admin">
                                 Administrador
                             </option>
+
+                            <option value="planificador">
+                                Planificador
+                            </option>
+
+                            <option value="encargado">
+                                Encargado
+                            </option>
+
+                            <option value="almacen">
+                                Almacén
+                            </option>
+
                         </BaseSelect>
                     </div>
 
