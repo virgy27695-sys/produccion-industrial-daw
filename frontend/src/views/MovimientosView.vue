@@ -48,7 +48,7 @@ const piezasCriticas = computed(() => {
     return piezas.value.filter(
         pieza =>
             Number(
-                pieza.stock || 0
+                pieza.stock_actual|| 0
             ) <
             Number(
                 pieza.stock_seguridad_dias || 0
@@ -63,7 +63,7 @@ function estadoStock(
 
     const stock =
         Number(
-            pieza.stock || 0
+            pieza.stock_actual|| 0
         )
 
     const seguridad =
@@ -269,7 +269,7 @@ onMounted(
 
                             <td class="px-4 py-4">
 
-                                {{ pieza.stock || 0 }}
+                                {{ pieza.stock_actual|| 0 }}
 
                             </td>
 

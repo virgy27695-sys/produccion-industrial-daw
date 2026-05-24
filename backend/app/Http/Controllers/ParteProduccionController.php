@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ParteProduccion;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class ParteProduccionController extends Controller
 {
@@ -60,7 +61,8 @@ class ParteProduccionController extends Controller
     /**
      * ACTUALIZAR PARTE
      *
-     * Solo datos operativos
+     * Solo datos operativos.
+     * No permite modificar el estado desde update.
      */
     public function update(
         Request $request,
@@ -71,12 +73,9 @@ class ParteProduccionController extends Controller
             false
         );
 
-        // seguridad adicional
         unset($data['estado']);
 
-        $partesProduccion->update(
-            $data
-        );
+        $partesProduccion->update($data);
 
         return $partesProduccion->load([
             'user',
@@ -88,6 +87,8 @@ class ParteProduccionController extends Controller
 
     /**
      * VALIDAR PRODUCCIÓN
+     *
+     * Al validar un parte, las piezas buenas pasan a stock.
      */
     public function validar(
         Request $request,
@@ -99,20 +100,38 @@ class ParteProduccionController extends Controller
             ], 403);
         }
 
-        $partesProduccion->update([
-            'estado' => 'validado',
-        ]);
+        DB::transaction(function () use ($partesProduccion) {
 
-        return $partesProduccion->load([
-            'user',
-            'pieza',
-            'molde',
-        ]);
+            if ($partesProduccion->estado !== 'validado') {
+
+                $partesProduccion
+                    ->pieza()
+                    ->increment(
+                        'stock_actual',
+                        $partesProduccion->cantidad_buena
+                    );
+            }
+
+            $partesProduccion->update([
+                'estado' => 'validado',
+            ]);
+        });
+
+        return $partesProduccion
+            ->fresh()
+            ->load([
+                'user',
+                'pieza',
+                'molde',
+            ]);
     }
 
 
     /**
      * CORREGIR PRODUCCIÓN
+     *
+     * Si el parte estaba validado, se descuenta del stock
+     * la cantidad buena que se había sumado previamente.
      */
     public function corregir(
         Request $request,
@@ -124,25 +143,57 @@ class ParteProduccionController extends Controller
             ], 403);
         }
 
-        $partesProduccion->update([
-            'estado' => 'corregido',
-        ]);
+        DB::transaction(function () use ($partesProduccion) {
 
-        return $partesProduccion->load([
-            'user',
-            'pieza',
-            'molde',
-        ]);
+            if ($partesProduccion->estado === 'validado') {
+
+                $partesProduccion
+                    ->pieza()
+                    ->decrement(
+                        'stock_actual',
+                        $partesProduccion->cantidad_buena
+                    );
+            }
+
+            $partesProduccion->update([
+                'estado' => 'corregido',
+            ]);
+        });
+
+        return $partesProduccion
+            ->fresh()
+            ->load([
+                'user',
+                'pieza',
+                'molde',
+            ]);
     }
 
 
     /**
      * ELIMINAR
+     *
+     * Si se elimina un parte ya validado,
+     * también se descuenta del stock.
      */
     public function destroy(
         ParteProduccion $partesProduccion
     ): JsonResponse {
-        $partesProduccion->delete();
+
+        DB::transaction(function () use ($partesProduccion) {
+
+            if ($partesProduccion->estado === 'validado') {
+
+                $partesProduccion
+                    ->pieza()
+                    ->decrement(
+                        'stock_actual',
+                        $partesProduccion->cantidad_buena
+                    );
+            }
+
+            $partesProduccion->delete();
+        });
 
         return response()->json([
             'message' => 'Parte eliminado correctamente',
@@ -262,7 +313,6 @@ class ParteProduccionController extends Controller
         ];
 
         if ($includeEstado) {
-
             $rules['estado'] = [
                 'nullable',
                 'in:pendiente,validado,corregido',
