@@ -1,9 +1,7 @@
 <script setup>
-// IMPORTS
 import { computed, onMounted, ref } from "vue"
 import { useHead } from "@vueuse/head"
 
-// API CLIENTES
 import {
     getClientes,
     createCliente,
@@ -11,43 +9,34 @@ import {
     deleteCliente,
 } from "../api/clientes"
 
-// COMPONENTES UI
 import ActionButtons from "../components/ui/ActionButtons.vue"
 import DataTable from "../components/ui/table/DataTable.vue"
 import BaseInput from "../components/ui/BaseInput.vue"
 import BaseButton from "../components/ui/BaseButton.vue"
 import ConfirmDialog from "../components/ui/ConfirmDialog.vue"
 
-// STORES Y UTILS
 import { useToastStore } from "../stores/toast"
-import { isAdmin, isPlanificador } from "../utils/auth"
-
-// COMPOSABLE CRUD
+import { getCurrentUser } from "../utils/auth"
 import { useCrud } from "../composables/useCrud"
 
-
-// CONFIGURACIÓN SEO
 useHead({
     title: "Clientes · ISAVEX",
 })
 
-
-// ESTADO GENERAL
 const toast = useToastStore()
-const admin = isAdmin()
-const planificador = isPlanificador()
-const canManage = admin || planificador
+
+const currentUser = computed(() => getCurrentUser())
+
+const canManage = computed(() =>
+    ["admin", "planificador"].includes(currentUser.value?.role)
+)
 
 const clientes = ref([])
 const busqueda = ref("")
 
-
-// MODAL DE CONFIRMACIÓN
 const showDeleteDialog = ref(false)
 const clienteToDelete = ref(null)
 
-
-// CRUD GLOBAL
 const {
     loading,
     saving,
@@ -58,19 +47,13 @@ const {
     clearErrors,
 } = useCrud()
 
-
-// FORMULARIO
 const form = ref({
     id: null,
     nombre: "",
 })
 
-
-// DETECTAR EDICIÓN
 const isEditing = computed(() => form.value.id !== null)
 
-
-// FILTRADO DE CLIENTES
 const clientesFiltrados = computed(() => {
     const texto = busqueda.value.trim().toLowerCase()
 
@@ -82,8 +65,6 @@ const clientesFiltrados = computed(() => {
     )
 })
 
-
-// CARGAR CLIENTES
 async function loadClientes() {
     await executeLoad(async () => {
         const data = await getClientes()
@@ -94,8 +75,6 @@ async function loadClientes() {
     })
 }
 
-
-// REINICIAR FORMULARIO
 function resetForm() {
     form.value = {
         id: null,
@@ -105,9 +84,9 @@ function resetForm() {
     clearErrors()
 }
 
-
-// EDITAR CLIENTE
 function editCliente(cliente) {
+    if (!canManage.value) return
+
     form.value = {
         id: cliente.id,
         nombre: cliente.nombre,
@@ -116,9 +95,9 @@ function editCliente(cliente) {
     clearErrors()
 }
 
-
-// GUARDAR CLIENTE
 async function submitForm() {
+    if (!canManage.value) return
+
     clearErrors()
 
     if (!form.value.nombre.trim()) {
@@ -143,29 +122,26 @@ async function submitForm() {
             resetForm()
             await loadClientes()
         })
-    } catch (e) {
+    } catch {
         formError.value = "No se pudo guardar el cliente."
         toast.show("Error al guardar cliente", "error")
     }
 }
 
-
-// ABRIR MODAL DE ELIMINACIÓN
 function askDeleteCliente(cliente) {
+    if (!canManage.value) return
+
     clienteToDelete.value = cliente
     showDeleteDialog.value = true
 }
 
-
-// CERRAR MODAL DE ELIMINACIÓN
 function cancelDeleteCliente() {
     clienteToDelete.value = null
     showDeleteDialog.value = false
 }
 
-
-// CONFIRMAR ELIMINACIÓN
 async function confirmDeleteCliente() {
+    if (!canManage.value) return
     if (!clienteToDelete.value) return
 
     try {
@@ -176,20 +152,17 @@ async function confirmDeleteCliente() {
         cancelDeleteCliente()
 
         await loadClientes()
-    } catch (e) {
+    } catch {
         error.value = "No se pudo eliminar el cliente."
         toast.show("Error al eliminar cliente", "error")
     }
 }
 
-
-// INICIALIZACIÓN
 onMounted(loadClientes)
 </script>
 
 <template>
     <section class="space-y-4 md:space-y-5">
-        <!-- HERO -->
         <div class="isavex-card overflow-hidden p-4 md:p-6">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -231,9 +204,7 @@ onMounted(loadClientes)
             </div>
         </div>
 
-        <!-- GRID PRINCIPAL -->
         <div class="grid gap-4 md:gap-5" :class="canManage ? 'xl:grid-cols-[340px_1fr]' : 'xl:grid-cols-1'">
-            <!-- FORMULARIO -->
             <div v-if="canManage" class="isavex-card p-4 md:p-5">
                 <div class="mb-4">
                     <h3 class="text-xl font-bold text-slate-900 md:text-2xl">
@@ -276,7 +247,6 @@ onMounted(loadClientes)
                 </form>
             </div>
 
-            <!-- LISTADO -->
             <div class="isavex-card p-4 md:p-5">
                 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -309,12 +279,9 @@ onMounted(loadClientes)
                 <DataTable :loading="loading" :empty="clientesFiltrados.length === 0"
                     loading-text="Cargando clientes..." empty-title="Sin clientes registrados"
                     empty-description="Todavía no hay clientes disponibles en el sistema.">
-
-                    <!-- MOBILE -->
                     <div class="grid gap-3 md:hidden">
                         <div v-for="cliente in clientesFiltrados" :key="cliente.id"
                             class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex min-w-0 items-center gap-3">
                                     <div
@@ -339,7 +306,6 @@ onMounted(loadClientes)
                         </div>
                     </div>
 
-                    <!-- DESKTOP -->
                     <div class="hidden overflow-x-auto md:block">
                         <table class="min-w-full">
                             <thead>
@@ -362,7 +328,6 @@ onMounted(loadClientes)
                             <tbody>
                                 <tr v-for="cliente in clientesFiltrados" :key="cliente.id"
                                     class="border-b border-slate-100 transition hover:bg-white/60">
-
                                     <td class="px-4 py-4">
                                         <span
                                             class="rounded-xl bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
@@ -403,7 +368,6 @@ onMounted(loadClientes)
             </div>
         </div>
 
-        <!-- MODAL CONFIRMACIÓN -->
         <ConfirmDialog :show="showDeleteDialog" title="Eliminar cliente"
             :message="`¿Seguro que quieres eliminar el cliente '${clienteToDelete?.nombre || ''}'? Esta acción no se puede deshacer.`"
             confirm-text="Eliminar" cancel-text="Cancelar" tone="danger" @confirm="confirmDeleteCliente"

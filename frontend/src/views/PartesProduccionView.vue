@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue"
+import { computed, ref, onMounted } from "vue"
 
 import {
     getPartesProduccion,
@@ -14,10 +14,23 @@ import { getMoldes } from "../api/moldes"
 
 import {
     getCurrentUser,
-    canValidateProduction,
 } from "../utils/auth"
 
-const canValidate = canValidateProduction()
+const currentUser = computed(() =>
+    getCurrentUser()
+)
+
+const canValidate = computed(() =>
+    ["admin", "planificador"].includes(
+        currentUser.value?.role
+    )
+)
+
+const canDelete = computed(() =>
+    ["admin", "planificador"].includes(
+        currentUser.value?.role
+    )
+)
 
 const loading = ref(false)
 const saving = ref(false)
@@ -72,17 +85,31 @@ async function loadData() {
         loading.value = true
         error.value = ""
 
-        const [partesData, piezasData, moldesData] = await Promise.all([
+        const [
+            partesData,
+            piezasData,
+            moldesData,
+        ] = await Promise.all([
             getPartesProduccion(),
             getPiezas(),
             getMoldes(),
         ])
 
-        partes.value = Array.isArray(partesData) ? partesData : []
-        piezas.value = Array.isArray(piezasData) ? piezasData : []
-        moldes.value = Array.isArray(moldesData) ? moldesData : []
-    } catch (e) {
-        error.value = "No se pudieron cargar los datos."
+        partes.value = Array.isArray(partesData)
+            ? partesData
+            : []
+
+        piezas.value = Array.isArray(piezasData)
+            ? piezasData
+            : []
+
+        moldes.value = Array.isArray(moldesData)
+            ? moldesData
+            : []
+
+    } catch {
+        error.value =
+            "No se pudieron cargar los datos."
     } finally {
         loading.value = false
     }
@@ -92,12 +119,14 @@ async function saveParte() {
     const user = getCurrentUser()
 
     if (!user) {
-        error.value = "No hay usuario autenticado."
+        error.value =
+            "No hay usuario autenticado."
         return
     }
 
     if (!form.value.pieza_id) {
-        error.value = "Debes seleccionar una pieza."
+        error.value =
+            "Debes seleccionar una pieza."
         return
     }
 
@@ -108,39 +137,62 @@ async function saveParte() {
         await createParteProduccion({
             ...form.value,
             user_id: user.id,
-            molde_id: form.value.molde_id || null,
-            cantidad_fabricada: Number(form.value.cantidad_fabricada || 0),
-            cantidad_buena: Number(form.value.cantidad_buena || 0),
-            cantidad_rechazada: Number(form.value.cantidad_rechazada || 0),
-            minutos_paro: Number(form.value.minutos_paro || 0),
+            molde_id:
+                form.value.molde_id || null,
+            cantidad_fabricada:
+                Number(form.value.cantidad_fabricada || 0),
+            cantidad_buena:
+                Number(form.value.cantidad_buena || 0),
+            cantidad_rechazada:
+                Number(form.value.cantidad_rechazada || 0),
+            minutos_paro:
+                Number(form.value.minutos_paro || 0),
         })
 
         resetForm()
         await loadData()
-    } catch (e) {
-        error.value = "No se pudo guardar el parte de producción."
+
+    } catch {
+        error.value =
+            "No se pudo guardar el parte de producción."
     } finally {
         saving.value = false
     }
 }
 
 async function updateEstado(parte, estado) {
+    if (!canValidate.value) {
+        error.value =
+            "No tienes permisos para validar o corregir partes."
+        return
+    }
+
     try {
         error.value = ""
 
         if (estado === "validado") {
             await validarParteProduccion(parte.id)
-        } else {
+        }
+
+        if (estado === "corregido") {
             await corregirParteProduccion(parte.id)
         }
 
         await loadData()
-    } catch (e) {
-        error.value = "No se pudo actualizar el estado."
+
+    } catch {
+        error.value =
+            "No se pudo actualizar el estado."
     }
 }
 
 async function deleteParte(parte) {
+    if (!canDelete.value) {
+        error.value =
+            "No tienes permisos para eliminar partes."
+        return
+    }
+
     try {
         error.value = ""
 
@@ -151,6 +203,19 @@ async function deleteParte(parte) {
     } catch {
         error.value =
             "No se pudo eliminar el parte."
+    }
+}
+
+function estadoClass(estado) {
+    return {
+        "bg-amber-100 text-amber-700":
+            estado === "pendiente",
+
+        "bg-green-100 text-green-700":
+            estado === "validado",
+
+        "bg-orange-100 text-orange-700":
+            estado === "corregido",
     }
 }
 
@@ -189,7 +254,9 @@ onMounted(async () => {
 
                     <select v-model="form.pieza_id"
                         class="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none">
-                        <option value="">Seleccionar pieza</option>
+                        <option value="">
+                            Seleccionar pieza
+                        </option>
 
                         <option v-for="pieza in piezas" :key="pieza.id" :value="pieza.id">
                             {{ pieza.codigo || pieza.nombre || pieza.denominacion }}
@@ -204,7 +271,9 @@ onMounted(async () => {
 
                     <select v-model="form.molde_id"
                         class="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none">
-                        <option value="">Seleccionar molde</option>
+                        <option value="">
+                            Seleccionar molde
+                        </option>
 
                         <option v-for="molde in moldes" :key="molde.id" :value="molde.id">
                             {{ molde.codigo || molde.nombre }}
@@ -228,9 +297,17 @@ onMounted(async () => {
 
                     <select v-model="form.turno"
                         class="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none">
-                        <option value="mañana">Mañana</option>
-                        <option value="tarde">Tarde</option>
-                        <option value="noche">Noche</option>
+                        <option value="mañana">
+                            Mañana
+                        </option>
+
+                        <option value="tarde">
+                            Tarde
+                        </option>
+
+                        <option value="noche">
+                            Noche
+                        </option>
                     </select>
                 </div>
 
@@ -304,12 +381,29 @@ onMounted(async () => {
 
                     <select v-model="form.averia"
                         class="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none">
-                        <option value="">Sin avería</option>
-                        <option value="molde">Molde</option>
-                        <option value="maquina">Máquina</option>
-                        <option value="calentadores">Calentadores</option>
-                        <option value="seprom">Seprom</option>
-                        <option value="otra">Otra</option>
+                        <option value="">
+                            Sin avería
+                        </option>
+
+                        <option value="molde">
+                            Molde
+                        </option>
+
+                        <option value="maquina">
+                            Máquina
+                        </option>
+
+                        <option value="calentadores">
+                            Calentadores
+                        </option>
+
+                        <option value="seprom">
+                            Seprom
+                        </option>
+
+                        <option value="otra">
+                            Otra
+                        </option>
                     </select>
                 </div>
             </div>
@@ -402,18 +496,20 @@ onMounted(async () => {
 
                             <td class="px-4 py-3">
                                 <div class="flex flex-col gap-2">
-                                    <span
-                                        class="w-fit rounded-xl bg-cyan-100 px-3 py-1 text-xs font-semibold text-cyan-700">
+                                    <span class="w-fit rounded-xl px-3 py-1 text-xs font-semibold"
+                                        :class="estadoClass(parte.estado)">
                                         {{ parte.estado }}
                                     </span>
 
                                     <div v-if="canValidate" class="flex gap-2">
-                                        <button @click="updateEstado(parte, 'validado')"
+                                        <button v-if="parte.estado !== 'validado'"
+                                            @click="updateEstado(parte, 'validado')"
                                             class="rounded-lg bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
                                             Validar
                                         </button>
 
-                                        <button @click="updateEstado(parte, 'corregido')"
+                                        <button v-if="parte.estado !== 'corregido'"
+                                            @click="updateEstado(parte, 'corregido')"
                                             class="rounded-lg bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-700">
                                             Corregir
                                         </button>
@@ -422,10 +518,14 @@ onMounted(async () => {
                             </td>
 
                             <td class="px-4 py-3">
-                                <button @click="deleteParte(parte)"
+                                <button v-if="canDelete" @click="deleteParte(parte)"
                                     class="rounded-lg bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
                                     Eliminar
                                 </button>
+
+                                <span v-else class="text-xs text-slate-400">
+                                    Sin acciones
+                                </span>
                             </td>
                         </tr>
                     </tbody>
