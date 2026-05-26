@@ -35,28 +35,64 @@ class ProgramaSeeder extends Seeder
             'observaciones' => 'Programa trimestral',
         ]);
 
-        $piezas = Pieza::take(6)->get();
+        /*
+         * Cogemos una pieza por molde.
+         * Así evitamos crear necesidades duplicadas por separado
+         * y luego generamos automáticamente sus referencias asociadas.
+         */
+        $piezasBase = Pieza::with('molde')
+            ->whereNotNull('molde_id')
+            ->get()
+            ->unique('molde_id')
+            ->values()
+            ->take(5);
 
-        if ($piezas->isEmpty()) {
+        if ($piezasBase->isEmpty()) {
             return;
         }
 
         $anio = now()->year;
         $semana = (int) now()->format('W');
 
-        foreach ($piezas as $index => $pieza) {
-            ProgramaDetalle::create([
-                'programa_id' => $index % 2 === 0
-                    ? $programaAudi->id
-                    : $programaBmw->id,
+        foreach ($piezasBase as $index => $piezaBase) {
 
-                'pieza_id' => $pieza->id,
-                'anio' => $anio,
-                'semana' => $semana + ($index % 4),
-                'cantidad' => 500 + ($index * 250),
-                'familia_texto' => $pieza->categoria_funcional ?? 'Faros',
-                'comentarios' => 'Necesidad generada por seeder',
-            ]);
+            $programa = $index % 2 === 0
+                ? $programaAudi
+                : $programaBmw;
+
+            $semanaPrograma =
+                $semana + ($index % 4);
+
+            $cantidad =
+                500 + ($index * 250);
+
+            /*
+             * Si el molde es izquierda/derecha,
+             * se crean necesidades para todas las piezas
+             * asociadas al mismo molde con la misma cantidad.
+             *
+             * Ejemplo:
+             * Molde M-AUDI-270
+             * 90112502 -> 500
+             * 90112503 -> 500
+             */
+            $piezasDelMolde = Pieza::where(
+                'molde_id',
+                $piezaBase->molde_id
+            )->get();
+
+            foreach ($piezasDelMolde as $pieza) {
+
+                ProgramaDetalle::create([
+                    'programa_id' => $programa->id,
+                    'pieza_id' => $pieza->id,
+                    'anio' => $anio,
+                    'semana' => $semanaPrograma,
+                    'cantidad' => $cantidad,
+                    'familia_texto' => $pieza->categoria_funcional ?? 'Faros',
+                    'comentarios' => 'Necesidad generada por seeder',
+                ]);
+            }
         }
     }
 }

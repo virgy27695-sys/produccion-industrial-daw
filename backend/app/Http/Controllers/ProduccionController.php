@@ -14,78 +14,69 @@ class ProduccionController extends Controller
      * - Año
      * - Semana
      *
-     * Devuelve:
-     * - código molde
-     * - referencias asociadas
-     * - cantidad prevista
-     * - cavidades
-     * - ciclos estimados
+     * Un molde izquierda/derecha aparece una sola vez,
+     * con sus referencias agrupadas.
      */
     public function resumen()
     {
-        // Cargar relaciones
         $detalles = ProgramaDetalle::with([
             'pieza.molde',
             'pieza.modelo',
-        ])->get();
+        ])
+            ->get()
+            ->filter(function ($item) {
+                return
+                    $item->pieza &&
+                    $item->pieza->molde;
+            });
 
-        // Agrupar por molde + año + semana
         $agrupado = $detalles->groupBy(function ($item) {
-
-            return
-                $item->pieza->molde_id .
-                '_' .
-                $item->anio .
-                '_' .
-                $item->semana;
+            return implode('_', [
+                $item->pieza->molde_id,
+                $item->anio,
+                $item->semana,
+            ]);
         });
 
         $resultado = [];
 
         foreach ($agrupado as $grupo) {
 
-            $primer = $grupo->first();
+            $primer =
+                $grupo->first();
 
-            $molde = $primer->pieza?->molde;
+            $molde =
+                $primer->pieza->molde;
 
-            // Ignorar piezas sin molde
-            if (!$molde) {
-                continue;
-            }
-
-            // Referencias asociadas al molde
             $referencias = $grupo
                 ->pluck('pieza.codigo')
+                ->filter()
                 ->unique()
-                ->implode(' / ');
+                ->values();
 
-            // Modelos asociados
             $modelos = $grupo
                 ->pluck('pieza.modelo.nombre')
                 ->filter()
                 ->unique()
-                ->implode(' / ');
+                ->values();
 
             /*
-             * Para moldes izquierda/derecha:
-             * el molde genera un conjunto por ciclo
-             * así que usamos la mayor cantidad
+             * Lógica industrial:
              *
-             * Para el resto:
-             * usamos la suma normal
+             * Si el mismo molde tiene varias referencias en la misma semana,
+             * por ejemplo izquierda/derecha, se fabrica el conjunto en el
+             * mismo ciclo.
+             *
+             * Por eso no se suman ambas cantidades para calcular ciclos.
+             * Se toma la mayor necesidad del grupo.
              */
+            $cantidadPrevista =
+                $referencias->count() > 1
+                ? $grupo->max('cantidad')
+                : $grupo->sum('cantidad');
 
-            if ($molde->tipo_configuracion === 'izquierda_derecha') {
-
-                $cantidadPrevista =
-                    $grupo->max('cantidad');
-            } else {
-
-                $cantidadPrevista =
-                    $grupo->sum('cantidad');
-            }
-
-            $cavidades = $molde->cavidades ?: 1;
+            $cavidades =
+                $molde->cavidades ?: 1;
 
             $ciclos =
                 ceil(
@@ -94,7 +85,6 @@ class ProduccionController extends Controller
                 );
 
             $resultado[] = [
-
                 'molde_codigo' =>
                 $molde->codigo,
 
@@ -102,10 +92,10 @@ class ProduccionController extends Controller
                 $molde->descripcion,
 
                 'referencias' =>
-                $referencias,
+                $referencias->implode(' / '),
 
                 'modelo' =>
-                $modelos,
+                $modelos->implode(' / '),
 
                 'anio' =>
                 $primer->anio,
@@ -129,6 +119,7 @@ class ProduccionController extends Controller
                 ->sortBy([
                     ['anio', 'asc'],
                     ['semana', 'asc'],
+                    ['molde_codigo', 'asc'],
                 ])
                 ->values()
         );

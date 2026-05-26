@@ -5,122 +5,137 @@ namespace App\Http\Controllers;
 use App\Models\Pieza;
 use App\Models\ProgramaDetalle;
 use App\Models\Entrega;
-use App\Models\Fabricacion;
+use App\Models\ParteProduccion;
 
 class SituacionController extends Controller
 {
     /**
      * SITUACIÓN REAL DE PRODUCCIÓN POR PIEZA
-     *
-     * Calcula:
-     * - necesidades del cliente
-     * - producción
-     * - entregas
-     * - stock
-     * - estado (semáforo)
      */
     public function resumen()
     {
         $resultado = [];
 
-        // Obtener todas las piezas
         $piezas = Pieza::all();
 
         foreach ($piezas as $pieza) {
 
-            // --------------------------
-            // 1. PROGRAMA SEMANA ACTUAL
-            // --------------------------
-
-            // Aquí simplificamos usando TODAS las semanas
-            // luego podemos filtrar semana actual
-            $programado = ProgramaDetalle::where('pieza_id', $pieza->id)
-                ->sum('cantidad');
+            // NECESIDADES PROGRAMADAS
+            $programado = ProgramaDetalle::where(
+                'pieza_id',
+                $pieza->id
+            )->sum('cantidad');
 
 
-            // --------------------------
-            // 2. FABRICADO
-            // --------------------------
-
-            $fabricado = Fabricacion::where('pieza_id', $pieza->id)
-                ->sum('cantidad');
-
-
-            // --------------------------
-            // 3. ENTREGADO
-            // --------------------------
-
-            $entregado = Entrega::where('pieza_id', $pieza->id)
-                ->sum('cantidad');
+            // FABRICACIÓN VALIDADA
+            $fabricado = ParteProduccion::where(
+                'pieza_id',
+                $pieza->id
+            )
+                ->where(
+                    'estado',
+                    'validado'
+                )
+                ->sum('cantidad_buena');
 
 
-            // --------------------------
-            // 4. STOCK
-            // --------------------------
-
-            $stock = $pieza->stock_actual ?? 0;
-
-
-            // --------------------------
-            // 5. CONSUMO DIARIO
-            // --------------------------
-
-            // Suponemos semana de 5 días
-            $consumoDiario = $programado > 0 ? ($programado / 5) : 0;
+            // ENTREGAS REALIZADAS
+            $entregado = Entrega::where(
+                'pieza_id',
+                $pieza->id
+            )->sum('cantidad');
 
 
-            // --------------------------
-            // 6. STOCK SEGURIDAD (3 días)
-            // --------------------------
-
-            $stockSeguridad = $consumoDiario * $pieza->stock_seguridad_dias;
-
-
-            // --------------------------
-            // 7. DISPONIBLE REAL
-            // --------------------------
-
-            $disponible = $stock + $fabricado - $entregado;
+            // STOCK REAL DISPONIBLE
+            $stockActual = (int)(
+                $pieza->stock_actual ?? 0
+            );
 
 
-            // --------------------------
-            // 8. PENDIENTE
-            // --------------------------
+            // STOCK MÍNIMO
+            $stockSeguridad = (int)(
+                $pieza->stock_seguridad_dias ?? 0
+            );
 
-            $pendiente = $programado - $entregado;
+
+            /*
+             * DISPONIBLE REAL
+             *
+             * stock_actual ya tiene:
+             * + producción validada
+             * - entregas realizadas
+             */
+            $disponible = $stockActual;
 
 
-            // --------------------------
-            // 9. SEMÁFORO
-            // --------------------------
+            /*
+             * PENDIENTE
+             *
+             * Lo que todavía falta entregar
+             */
+            $pendiente = max(
+                $programado - $entregado,
+                0
+            );
 
+
+            // SEMÁFORO
             $estado = 'ok';
 
-            if ($disponible < $stockSeguridad) {
+            if (
+                $disponible <=
+                $stockSeguridad
+            ) {
+
                 $estado = 'critico';
-            } elseif ($disponible < ($stockSeguridad * 1.2)) {
+            } elseif (
+
+                $disponible <=
+                ($stockSeguridad * 1.5)
+
+            ) {
+
                 $estado = 'medio';
             }
 
 
             $resultado[] = [
-                'pieza' => $pieza->codigo,
-                'denominacion' => $pieza->denominacion,
 
-                'programado' => $programado,
-                'fabricado' => $fabricado,
-                'entregado' => $entregado,
+                'pieza' =>
+                $pieza->codigo,
 
-                'stock_actual' => $stock,
-                'stock_seguridad' => round($stockSeguridad),
+                'denominacion' =>
+                $pieza->denominacion,
 
-                'disponible' => $disponible,
-                'pendiente' => $pendiente,
+                'programado' =>
+                $programado,
 
-                'estado' => $estado,
+                'fabricado' =>
+                $fabricado,
+
+                'entregado' =>
+                $entregado,
+
+                'stock_actual' =>
+                $stockActual,
+
+                'stock_seguridad' =>
+                $stockSeguridad,
+
+                'disponible' =>
+                $disponible,
+
+                'pendiente' =>
+                $pendiente,
+
+                'estado' =>
+                $estado,
             ];
         }
 
-        return response()->json($resultado);
+        return response()->json(
+            collect($resultado)
+                ->values()
+        );
     }
 }

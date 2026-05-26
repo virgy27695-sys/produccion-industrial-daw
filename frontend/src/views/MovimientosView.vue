@@ -43,13 +43,14 @@ async function loadData() {
 }
 
 
+// PIEZAS CRÍTICAS
 const piezasCriticas = computed(() => {
 
     return piezas.value.filter(
         pieza =>
             Number(
-                pieza.stock_actual|| 0
-            ) <
+                pieza.stock_actual || 0
+            ) <=
             Number(
                 pieza.stock_seguridad_dias || 0
             )
@@ -57,13 +58,14 @@ const piezasCriticas = computed(() => {
 })
 
 
+// ESTADO DE STOCK
 function estadoStock(
     pieza
 ) {
 
     const stock =
         Number(
-            pieza.stock_actual|| 0
+            pieza.stock_actual || 0
         )
 
     const seguridad =
@@ -71,12 +73,21 @@ function estadoStock(
             pieza.stock_seguridad_dias || 0
         )
 
+    // Sin stock
+    if (
+        stock <= 0
+    ) {
+        return "Crítico"
+    }
+
+    // Por debajo del mínimo
     if (
         stock <= seguridad
     ) {
         return "Crítico"
     }
 
+    // Cercano al mínimo
     if (
         stock <=
         seguridad * 1.5
@@ -88,6 +99,7 @@ function estadoStock(
 }
 
 
+// COLOR ESTADO
 function estadoClass(
     pieza
 ) {
@@ -122,28 +134,24 @@ onMounted(
 
     <section class="space-y-6">
 
+        <!-- CABECERA -->
+
         <div class="rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-xl">
 
             <div class="flex items-center gap-4">
 
                 <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700">
-
                     <Boxes class="h-7 w-7" />
-
                 </div>
 
                 <div>
 
                     <h1 class="text-3xl font-bold text-[#081426]">
-
                         Stock y almacén
-
                     </h1>
 
                     <p class="mt-1 text-sm text-slate-500">
-
-                        Control de stock y piezas críticas.
-
+                        Control del stock real disponible y piezas críticas.
                     </p>
 
                 </div>
@@ -153,6 +161,8 @@ onMounted(
         </div>
 
 
+        <!-- TARJETAS -->
+
         <div class="grid gap-4 md:grid-cols-3">
 
             <div class="rounded-[2rem] bg-white p-6 shadow">
@@ -160,15 +170,11 @@ onMounted(
                 <PackageCheck class="mb-3 h-6 w-6 text-green-700" />
 
                 <p class="text-sm text-slate-400">
-
                     Total piezas
-
                 </p>
 
                 <p class="text-3xl font-bold">
-
                     {{ piezas.length }}
-
                 </p>
 
             </div>
@@ -179,15 +185,11 @@ onMounted(
                 <AlertTriangle class="mb-3 h-6 w-6 text-red-700" />
 
                 <p class="text-sm text-slate-400">
-
                     Piezas críticas
-
                 </p>
 
                 <p class="text-3xl font-bold">
-
                     {{ piezasCriticas.length }}
-
                 </p>
 
             </div>
@@ -195,17 +197,18 @@ onMounted(
         </div>
 
 
-        <div class="rounded-[2rem] bg-white shadow overflow-hidden">
+        <!-- TABLA -->
+
+        <div class="rounded-[2rem] overflow-hidden bg-white shadow">
 
             <div class="border-b px-6 py-4">
 
                 <h2 class="text-xl font-bold">
-
                     Estado de stock
-
                 </h2>
 
             </div>
+
 
             <div v-if="loading" class="p-8 text-center text-slate-500">
 
@@ -213,11 +216,13 @@ onMounted(
 
             </div>
 
+
             <div v-else-if="!piezas.length" class="p-8 text-center text-slate-500">
 
                 No hay piezas disponibles.
 
             </div>
+
 
             <div v-else class="overflow-x-auto">
 
@@ -236,11 +241,11 @@ onMounted(
                             </th>
 
                             <th class="px-4 py-3">
-                                Stock
+                                Stock actual
                             </th>
 
                             <th class="px-4 py-3">
-                                Seguridad
+                                Stock mínimo
                             </th>
 
                             <th class="px-4 py-3">
@@ -250,6 +255,7 @@ onMounted(
                         </tr>
 
                     </thead>
+
 
                     <tbody>
 
@@ -267,9 +273,9 @@ onMounted(
 
                             </td>
 
-                            <td class="px-4 py-4">
+                            <td class="px-4 py-4 font-semibold">
 
-                                {{ pieza.stock_actual|| 0 }}
+                                {{ pieza.stock_actual || 0 }}
 
                             </td>
 

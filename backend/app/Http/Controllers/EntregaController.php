@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-// IMPORTS
 use App\Models\Entrega;
+use App\Models\Pieza;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class EntregaController extends Controller
 {
-    // LISTAR ENTREGAS
-    // Devuelve todas las entregas con la pieza asociada.
     public function index()
     {
         return Entrega::with('pieza')
@@ -17,8 +16,6 @@ class EntregaController extends Controller
             ->get();
     }
 
-    // CREAR ENTREGA
-    // Registra una cantidad entregada al cliente en una fecha y semana concreta.
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -29,7 +26,20 @@ class EntregaController extends Controller
             'cantidad' => ['required', 'integer', 'min:1'],
         ]);
 
-        $entrega = Entrega::create($validated);
+        $entrega = DB::transaction(function () use ($validated) {
+            $pieza = Pieza::findOrFail($validated['pieza_id']);
+
+            if ($pieza->stock_actual < $validated['cantidad']) {
+                abort(422, 'No hay stock suficiente para registrar la entrega.');
+            }
+
+            $pieza->decrement(
+                'stock_actual',
+                $validated['cantidad']
+            );
+
+            return Entrega::create($validated);
+        });
 
         return response()->json(
             $entrega->load('pieza'),
@@ -37,8 +47,6 @@ class EntregaController extends Controller
         );
     }
 
-    // MOSTRAR ENTREGA
-    // Devuelve una entrega concreta con su pieza.
     public function show(string $id)
     {
         $entrega = Entrega::with('pieza')->findOrFail($id);
@@ -46,8 +54,6 @@ class EntregaController extends Controller
         return response()->json($entrega);
     }
 
-    // ACTUALIZAR ENTREGA
-    // Permite corregir una entrega registrada.
     public function update(Request $request, string $id)
     {
         $entrega = Entrega::findOrFail($id);
@@ -60,17 +66,47 @@ class EntregaController extends Controller
             'cantidad' => ['required', 'integer', 'min:1'],
         ]);
 
-        $entrega->update($validated);
+        DB::transaction(function () use ($entrega, $validated) {
+            $piezaAnterior = Pieza::findOrFail($entrega->pieza_id);
 
-        return response()->json($entrega->load('pieza'));
+            $piezaAnterior->increment(
+                'stock_actual',
+                $entrega->cantidad
+            );
+
+            $piezaNueva = Pieza::findOrFail($validated['pieza_id']);
+
+            if ($piezaNueva->stock_actual < $validated['cantidad']) {
+                abort(422, 'No hay stock suficiente para actualizar la entrega.');
+            }
+
+            $piezaNueva->decrement(
+                'stock_actual',
+                $validated['cantidad']
+            );
+
+            $entrega->update($validated);
+        });
+
+        return response()->json(
+            $entrega->fresh()->load('pieza')
+        );
     }
 
-    // ELIMINAR ENTREGA
-    // Borra un registro de entrega.
     public function destroy(string $id)
     {
         $entrega = Entrega::findOrFail($id);
-        $entrega->delete();
+
+        DB::transaction(function () use ($entrega) {
+            $entrega
+                ->pieza()
+                ->increment(
+                    'stock_actual',
+                    $entrega->cantidad
+                );
+
+            $entrega->delete();
+        });
 
         return response()->json([
             'message' => 'Entrega eliminada correctamente'
